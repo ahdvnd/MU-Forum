@@ -8,20 +8,86 @@ class MinervaContentScript {
     this.setupInterception();
     this.createSidebar();
     this.setupMessageListener();
+    this.setupTextSelection();
+  }
+
+  setupTextSelection() {
+    // Only enable text selection capture on review pages
+    if (!this.isReviewPage) {
+      return;
+    }
+
+    // Add text selection listener - only for our extension functionality
+    document.addEventListener('mouseup', (event) => {
+      // Only handle if not clicking on our extension elements
+      if (!event.target.closest('.minerva-sidebar, .minerva-modal, .minerva-notification')) {
+        this.handleTextSelection();
+      }
+    });
+
+    // Also handle keyboard selection (Shift+Arrow keys, etc.)
+    document.addEventListener('keyup', (event) => {
+      // Only handle if not focused on our extension elements
+      if (!document.activeElement.closest('.minerva-sidebar, .minerva-modal, .minerva-notification')) {
+        if (event.shiftKey || event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+          this.handleTextSelection();
+        }
+      }
+    });
+  }
+
+  handleTextSelection() {
+    const selection = window.getSelection();
+    const selectedText = selection.toString().trim();
+    
+    // Only process if there's meaningful text selected (more than 10 characters)
+    if (selectedText.length > 10) {
+      this.addSelectedTextToResponses(selectedText);
+    }
+  }
+
+  addSelectedTextToResponses(text) {
+    // Generate a unique ID for this response
+    const responseId = `selected_${Date.now()}`;
+    
+    // Add to poll data with metadata
+    this.pollData.set(responseId, {
+      text: text,
+      source: 'text_selection',
+      timestamp: new Date().toISOString(),
+      length: text.length,
+      student_id: responseId
+    });
+
+    // Update the sidebar if it's showing the grader page
+    if (this.currentPage === 'grader') {
+      this.updateSidebar();
+    }
+
+    // Show a brief notification
+    this.showNotification(`Selected text captured (${text.length} chars)`, 'success');
   }
 
   determinePageType() {
     const url = window.location.href;
     
-    // Check if this is a page that supports grading
-    if (url.includes('/review') || 
-        url.includes('/grading') || 
+    // Check if this is a review page with the specific pattern
+    const reviewPagePattern = /\/app\/courses\/\d+\/sections\/\d+\/classes\/\d+\/review/;
+    if (reviewPagePattern.test(url)) {
+      this.isReviewPage = true;
+      return 'grader';
+    }
+    
+    // Check if this is other grading-related pages
+    if (url.includes('/grading') || 
         url.includes('/responses') ||
         url.includes('/assignments')) {
+      this.isReviewPage = false;
       return 'grader';
     }
     
     // Default to unavailable for other pages
+    this.isReviewPage = false;
     return 'unavailable';
   }
 
@@ -144,11 +210,518 @@ class MinervaContentScript {
     this.sidebar.id = 'minerva-assistant-sidebar';
     this.sidebar.className = 'minerva-sidebar collapsed';
     
+    // Inject our CSS only when sidebar is created
+    this.injectExtensionCSS();
+    
     // Add sidebar to page
     document.body.appendChild(this.sidebar);
     
     // Load the current page content
     this.loadSidebarPage(this.currentPage);
+  }
+
+  injectExtensionCSS() {
+    // Only inject CSS once
+    if (document.getElementById('minerva-extension-styles')) {
+      return;
+    }
+
+    // Create completely isolated CSS that ONLY affects our extension
+    const styleElement = document.createElement('style');
+    styleElement.id = 'minerva-extension-styles';
+    
+    // Restore the beautiful shadCN styling but with complete isolation
+    styleElement.textContent = `
+      /* MINERVA EXTENSION - RESTORED SHADCN STYLING - ISOLATED */
+      #minerva-assistant-sidebar {
+        all: initial !important;
+        position: fixed !important;
+        top: 0 !important;
+        right: 0 !important;
+        width: 380px !important;
+        height: 100vh !important;
+        background: hsl(0 0% 100%) !important;
+        border-left: 1px solid hsl(214.3 31.8% 91.4%) !important;
+        box-shadow: -4px 0 24px -4px rgba(0, 0, 0, 0.08), -2px 0 8px -2px rgba(0, 0, 0, 0.04) !important;
+        z-index: 10000 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+        font-size: 14px !important;
+        line-height: 1.5 !important;
+        transform: translateX(100%) !important;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        overflow-y: auto !important;
+        box-sizing: border-box !important;
+        display: block !important;
+      }
+      
+      #minerva-assistant-sidebar:not(.collapsed) {
+        transform: translateX(0) !important;
+      }
+      
+      #minerva-assistant-sidebar * {
+        box-sizing: border-box !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+      }
+      
+      #minerva-assistant-sidebar .sidebar-header {
+        background: hsl(0 0% 100%) !important;
+        border-bottom: 1px solid hsl(214.3 31.8% 91.4%) !important;
+        color: hsl(222.2 84% 4.9%) !important;
+        padding: 20px 24px 16px 24px !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 10001 !important;
+        backdrop-filter: blur(8px) !important;
+        background: hsl(0 0% 100% / 0.95) !important;
+      }
+      
+      #minerva-assistant-sidebar .sidebar-header h3 {
+        margin: 0 !important;
+        font-size: 18px !important;
+        font-weight: 600 !important;
+        letter-spacing: -0.025em !important;
+        color: hsl(222.2 84% 4.9%) !important;
+      }
+      
+      #minerva-assistant-sidebar .header-controls {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+      }
+      
+      #minerva-assistant-sidebar .close-btn {
+        background: none !important;
+        border: none !important;
+        color: hsl(215.4 16.3% 46.9%) !important;
+        font-size: 18px !important;
+        cursor: pointer !important;
+        padding: 0 !important;
+        width: 32px !important;
+        height: 32px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 6px !important;
+        line-height: 1 !important;
+        user-select: none !important;
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      }
+      
+      #minerva-assistant-sidebar .close-btn:hover {
+        background-color: hsl(210 40% 98%) !important;
+        color: hsl(222.2 84% 4.9%) !important;
+      }
+      
+      #minerva-assistant-sidebar .close-btn:active {
+        background-color: hsl(210 40% 96%) !important;
+        transform: scale(0.98) !important;
+      }
+      
+      #minerva-assistant-sidebar .sidebar-content {
+        padding: 0 !important;
+      }
+      
+      #minerva-assistant-sidebar .section {
+        padding: 24px !important;
+        border-bottom: 1px solid hsl(214.3 31.8% 91.4%) !important;
+      }
+      
+      #minerva-assistant-sidebar .section:last-child {
+        border-bottom: none !important;
+        padding-bottom: 32px !important;
+      }
+      
+      #minerva-assistant-sidebar .section h4 {
+        margin: 0 0 16px 0 !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        color: hsl(222.2 84% 4.9%) !important;
+        letter-spacing: -0.025em !important;
+      }
+      
+      #minerva-assistant-sidebar .section-header {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin-bottom: 16px !important;
+      }
+      
+      #minerva-assistant-sidebar .section-header h4 {
+        margin: 0 !important;
+      }
+      
+      #minerva-assistant-sidebar .btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 6px !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        cursor: pointer !important;
+        border: 1px solid transparent !important;
+        padding: 8px 16px !important;
+        height: 36px !important;
+        background: hsl(222.2 84% 4.9%) !important;
+        color: hsl(210 40% 98%) !important;
+        margin-right: 8px !important;
+        margin-bottom: 8px !important;
+        text-decoration: none !important;
+        user-select: none !important;
+      }
+      
+      #minerva-assistant-sidebar .btn:hover {
+        background: hsl(222.2 84% 4.9% / 0.9) !important;
+      }
+      
+      #minerva-assistant-sidebar .btn:active {
+        transform: scale(0.98) !important;
+      }
+      
+      #minerva-assistant-sidebar .btn-primary {
+        background: hsl(142.1 76.2% 36.3%) !important;
+        color: hsl(355.7 100% 97.3%) !important;
+      }
+      
+      #minerva-assistant-sidebar .btn-primary:hover {
+        background: hsl(142.1 76.2% 36.3% / 0.9) !important;
+      }
+      
+      #minerva-assistant-sidebar .btn-secondary {
+        background: hsl(210 40% 98%) !important;
+        color: hsl(222.2 84% 4.9%) !important;
+        border: 1px solid hsl(214.3 31.8% 91.4%) !important;
+      }
+      
+      #minerva-assistant-sidebar .btn-secondary:hover {
+        background: hsl(210 40% 96%) !important;
+      }
+      
+      #minerva-assistant-sidebar .btn-small {
+        padding: 4px 8px !important;
+        height: 24px !important;
+        font-size: 11px !important;
+        min-width: auto !important;
+      }
+      
+      #minerva-assistant-sidebar #rubric-input {
+        width: 100% !important;
+        height: 120px !important;
+        border: 1px solid hsl(214.3 31.8% 91.4%) !important;
+        border-radius: 6px !important;
+        padding: 12px !important;
+        font-size: 14px !important;
+        font-family: inherit !important;
+        resize: vertical !important;
+        margin-bottom: 16px !important;
+        background: hsl(0 0% 100%) !important;
+        color: hsl(222.2 84% 4.9%) !important;
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        line-height: 1.5 !important;
+      }
+      
+      #minerva-assistant-sidebar #rubric-input:focus {
+        outline: none !important;
+        border-color: hsl(221.2 83.2% 53.3%) !important;
+        box-shadow: 0 0 0 2px hsl(221.2 83.2% 53.3% / 0.2) !important;
+      }
+      
+      #minerva-assistant-sidebar #rubric-input::placeholder {
+        color: hsl(215.4 16.3% 46.9%) !important;
+      }
+      
+      #minerva-assistant-sidebar .responses {
+        max-height: 200px !important;
+        overflow-y: auto !important;
+        border-radius: 6px !important;
+      }
+      
+      #minerva-assistant-sidebar .response-item {
+        background: hsl(210 40% 98%) !important;
+        border: 1px solid hsl(214.3 31.8% 91.4%) !important;
+        border-radius: 6px !important;
+        padding: 12px !important;
+        margin-bottom: 8px !important;
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      }
+      
+      #minerva-assistant-sidebar .response-item:hover {
+        background: hsl(210 40% 96%) !important;
+      }
+      
+      #minerva-assistant-sidebar .response-item.selected-text {
+        border-left: 3px solid hsl(142.1 76.2% 36.3%) !important;
+        background: hsl(142.1 76.2% 36.3% / 0.05) !important;
+      }
+      
+      #minerva-assistant-sidebar .response-item.selected-text:hover {
+        background: hsl(142.1 76.2% 36.3% / 0.08) !important;
+      }
+      
+      #minerva-assistant-sidebar .response-header {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin-bottom: 8px !important;
+      }
+      
+      #minerva-assistant-sidebar .response-source {
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: hsl(222.2 84% 4.9%) !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+      }
+      
+      #minerva-assistant-sidebar .response-length {
+        font-size: 11px !important;
+        color: hsl(215.4 16.3% 46.9%) !important;
+        background: hsl(210 40% 96%) !important;
+        padding: 2px 6px !important;
+        border-radius: 4px !important;
+      }
+      
+      #minerva-assistant-sidebar .response-text {
+        margin: 0 !important;
+        font-size: 13px !important;
+        color: hsl(215.4 16.3% 46.9%) !important;
+        line-height: 1.5 !important;
+      }
+      
+      #minerva-assistant-sidebar .response-timestamp {
+        font-size: 11px !important;
+        color: hsl(215.4 16.3% 46.9%) !important;
+        margin-top: 6px !important;
+        font-style: italic !important;
+      }
+      
+      #minerva-assistant-sidebar .metrics {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+      }
+      
+      #minerva-assistant-sidebar .metric {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 12px 16px !important;
+        background: hsl(210 40% 98%) !important;
+        border: 1px solid hsl(214.3 31.8% 91.4%) !important;
+        border-radius: 6px !important;
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      }
+      
+      #minerva-assistant-sidebar .metric:hover {
+        background: hsl(210 40% 96%) !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-label {
+        font-size: 13px !important;
+        color: hsl(215.4 16.3% 46.9%) !important;
+        font-weight: 500 !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-value {
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        color: hsl(222.2 84% 4.9%) !important;
+      }
+      
+      #minerva-assistant-sidebar .unavailable-section {
+        text-align: center !important;
+        padding: 40px 24px !important;
+      }
+      
+      #minerva-assistant-sidebar .unavailable-content {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 16px !important;
+      }
+      
+      #minerva-assistant-sidebar .unavailable-icon {
+        font-size: 48px !important;
+        opacity: 0.6 !important;
+        margin-bottom: 8px !important;
+      }
+      
+      #minerva-assistant-sidebar .unavailable-content h4 {
+        margin: 0 !important;
+        font-size: 18px !important;
+        font-weight: 600 !important;
+        color: hsl(222.2 84% 4.9%) !important;
+        letter-spacing: -0.025em !important;
+      }
+      
+      #minerva-assistant-sidebar .unavailable-content p {
+        margin: 0 !important;
+        color: hsl(215.4 16.3% 46.9%) !important;
+        line-height: 1.5 !important;
+      }
+      
+      #minerva-assistant-sidebar .unavailable-description {
+        font-size: 13px !important;
+        max-width: 280px !important;
+        margin-top: 8px !important;
+      }
+      
+      /* Modal Styles - Also isolated */
+      .minerva-modal {
+        all: initial !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        background: hsl(0 0% 0% / 0.5) !important;
+        backdrop-filter: blur(4px) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 20000 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+      }
+      
+      .minerva-modal .modal-content {
+        background: hsl(0 0% 100%) !important;
+        border-radius: 12px !important;
+        width: 90% !important;
+        max-width: 500px !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+        border: 1px solid hsl(214.3 31.8% 91.4%) !important;
+      }
+      
+      .minerva-modal .modal-header {
+        background: hsl(0 0% 100%) !important;
+        color: hsl(222.2 84% 4.9%) !important;
+        padding: 24px 24px 0 24px !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        border-radius: 12px 12px 0 0 !important;
+      }
+      
+      .minerva-modal .modal-header h3 {
+        margin: 0 !important;
+        font-size: 18px !important;
+        font-weight: 600 !important;
+        letter-spacing: -0.025em !important;
+      }
+      
+      .minerva-modal .close-modal {
+        background: none !important;
+        border: none !important;
+        color: hsl(215.4 16.3% 46.9%) !important;
+        font-size: 18px !important;
+        cursor: pointer !important;
+        padding: 0 !important;
+        width: 32px !important;
+        height: 32px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 6px !important;
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      }
+      
+      .minerva-modal .close-modal:hover {
+        background: hsl(210 40% 98%) !important;
+        color: hsl(222.2 84% 4.9%) !important;
+      }
+      
+      .minerva-modal .modal-body {
+        padding: 24px 24px 16px 24px !important;
+      }
+      
+      .minerva-modal .modal-body label {
+        display: block !important;
+        margin-bottom: 8px !important;
+        font-weight: 600 !important;
+        color: hsl(222.2 84% 4.9%) !important;
+        font-size: 14px !important;
+      }
+      
+      .minerva-modal .modal-body input {
+        width: 100% !important;
+        padding: 12px !important;
+        border: 1px solid hsl(214.3 31.8% 91.4%) !important;
+        border-radius: 6px !important;
+        font-size: 14px !important;
+        margin-bottom: 8px !important;
+        background: hsl(0 0% 100%) !important;
+        color: hsl(222.2 84% 4.9%) !important;
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-sizing: border-box !important;
+        font-family: inherit !important;
+      }
+      
+      .minerva-modal .modal-body input:focus {
+        outline: none !important;
+        border-color: hsl(221.2 83.2% 53.3%) !important;
+        box-shadow: 0 0 0 2px hsl(221.2 83.2% 53.3% / 0.2) !important;
+      }
+      
+      .minerva-modal .help-text {
+        font-size: 13px !important;
+        color: hsl(215.4 16.3% 46.9%) !important;
+        margin: 0 !important;
+        line-height: 1.5 !important;
+      }
+      
+      .minerva-modal .modal-footer {
+        padding: 20px 24px 24px 24px !important;
+        border-top: 1px solid hsl(214.3 31.8% 91.4%) !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        gap: 12px !important;
+        margin-top: 0 !important;
+      }
+      
+      .minerva-modal .modal-footer .btn {
+        margin-right: 0 !important;
+        margin-bottom: 0 !important;
+        min-width: 80px !important;
+      }
+      
+      /* Notification Styles */
+      .minerva-notification {
+        all: initial !important;
+        position: fixed !important;
+        top: 24px !important;
+        right: 24px !important;
+        padding: 16px 20px !important;
+        border-radius: 8px !important;
+        font-weight: 500 !important;
+        z-index: 30000 !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+        border: 1px solid !important;
+        font-size: 14px !important;
+        line-height: 1.5 !important;
+        max-width: 400px !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+      }
+      
+      .minerva-notification.success {
+        background: hsl(142.1 76.2% 36.3% / 0.1) !important;
+        color: hsl(142.1 76.2% 36.3%) !important;
+        border-color: hsl(142.1 76.2% 36.3% / 0.3) !important;
+      }
+      
+      .minerva-notification.error {
+        background: hsl(0 62.8% 30.6% / 0.1) !important;
+        color: hsl(0 62.8% 30.6%) !important;
+        border-color: hsl(0 62.8% 30.6% / 0.3) !important;
+      }
+    `;
+    
+    document.head.appendChild(styleElement);
   }
 
   loadSidebarPage(pageName) {
@@ -202,7 +775,10 @@ class MinervaContentScript {
       </div>
       
       <div class="section">
-        <h4>Student Responses</h4>
+        <div class="section-header">
+          <h4>Student Responses</h4>
+          <button id="clear-responses" class="btn-small btn-secondary" title="Clear all responses">Clear</button>
+        </div>
         <div id="responses-list">
           <p>No responses detected yet...</p>
         </div>
@@ -290,9 +866,11 @@ class MinervaContentScript {
       this.setupGraderEvents();
     }
     
-    // Close sidebar with Escape key
+    // Close sidebar with Escape key - only when sidebar is open
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && !this.sidebar.classList.contains('collapsed')) {
+        // Only close if escape is pressed and sidebar is visible
+        // This is a reasonable extension behavior and won't interfere with main site
         this.closeSidebar();
       }
     });
@@ -314,6 +892,20 @@ class MinervaContentScript {
         this.analyzeAllResponses();
       });
     }
+
+    // Clear responses
+    const clearBtn = document.getElementById('clear-responses');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        this.clearResponses();
+      });
+    }
+  }
+
+  clearResponses() {
+    this.pollData.clear();
+    this.updateSidebar();
+    this.showNotification('All responses cleared', 'success');
   }
 
   openSettingsModal() {
@@ -477,10 +1069,20 @@ class MinervaContentScript {
     } else {
       let html = '<div class="responses">';
       for (const [studentId, response] of this.pollData) {
+        const isSelected = response.source === 'text_selection';
+        const displayText = isSelected ? response.text : JSON.stringify(response);
+        const truncatedText = displayText.length > 150 ? displayText.substring(0, 150) + '...' : displayText;
+        const sourceLabel = isSelected ? 'Selected Text' : `Student ${studentId}`;
+        const sourceIcon = isSelected ? '✂️' : '👤';
+        
         html += `
-          <div class="response-item">
-            <strong>Student ${studentId}</strong>
-            <p>${JSON.stringify(response).substring(0, 100)}...</p>
+          <div class="response-item ${isSelected ? 'selected-text' : ''}">
+            <div class="response-header">
+              <span class="response-source">${sourceIcon} ${sourceLabel}</span>
+              ${isSelected ? `<span class="response-length">${response.length} chars</span>` : ''}
+            </div>
+            <p class="response-text">${truncatedText}</p>
+            ${isSelected ? `<div class="response-timestamp">${new Date(response.timestamp).toLocaleTimeString()}</div>` : ''}
           </div>
         `;
       }

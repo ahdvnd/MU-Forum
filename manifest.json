@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Minerva Forum Assistant",
-  "version": "1.2.0",
+  "version": "1.2.5",
   "description": "AI-powered grading assistant for Minerva Forum LMS",
   
   "permissions": [
@@ -25,7 +25,6 @@
     {
       "matches": ["https://forum.minerva.edu/*"],
       "js": ["content.js"],
-      "css": ["sidebar.css"],
       "run_at": "document_end"
     }
   ],
