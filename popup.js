@@ -35,18 +35,7 @@ class MinervaPopup {
       document.getElementById('rubric-status').textContent = hasRubric ? 'Set' : 'Not Set';
       document.getElementById('rubric-status').className = `status-value ${hasRubric ? 'success' : 'warning'}`;
 
-      // Get data from content script if on Minerva Forum
-      if (isMinervaForum) {
-        try {
-          const response = await this.sendMessageToTab(currentTab.id, { type: 'GET_STATUS' });
-          if (response) {
-            document.getElementById('responses-count').textContent = response.responsesCount || 0;
-            document.getElementById('analyzed-count').textContent = response.analyzedCount || 0;
-          }
-        } catch (error) {
-          console.log('Content script not ready:', error);
-        }
-      }
+      // Content script communication removed - stats section removed
 
       // Show warnings/messages
       this.showMessages(isMinervaForum, hasApiKey, hasRubric);
@@ -112,14 +101,28 @@ class MinervaPopup {
       
       if (!currentTab.url.includes('forum.minerva.edu')) {
         this.showError('Please navigate to forum.minerva.edu first');
+        // Close popup after a brief delay to show the error
+        setTimeout(() => window.close(), 2000);
         return;
       }
 
-      await this.sendMessageToTab(currentTab.id, { type: 'SHOW_SIDEBAR' });
+      // Disable button and show loading state
+      const button = document.getElementById('show-sidebar');
+      button.textContent = 'Opening...';
+      button.disabled = true;
+
+      // Send message to show sidebar and close popup immediately
+      this.sendMessageToTab(currentTab.id, { type: 'SHOW_SIDEBAR' }).catch(err => {
+        console.log('Message send failed, but closing popup anyway:', err);
+      });
+      
+      // Close popup immediately after sending message
       window.close();
     } catch (error) {
       console.error('Error showing sidebar:', error);
       this.showError('Failed to show sidebar');
+      // Close popup after a brief delay to show the error
+      setTimeout(() => window.close(), 2000);
     }
   }
 
@@ -130,14 +133,28 @@ class MinervaPopup {
       
       if (!currentTab.url.includes('forum.minerva.edu')) {
         this.showError('Please navigate to forum.minerva.edu first');
+        // Close popup after a brief delay to show the error
+        setTimeout(() => window.close(), 2000);
         return;
       }
 
-      await this.sendMessageToTab(currentTab.id, { type: 'OPEN_SETTINGS' });
+      // Disable button and show loading state
+      const button = document.getElementById('configure-settings');
+      button.textContent = 'Opening...';
+      button.disabled = true;
+
+      // Send message to open settings and close popup immediately
+      this.sendMessageToTab(currentTab.id, { type: 'OPEN_SETTINGS' }).catch(err => {
+        console.log('Message send failed, but closing popup anyway:', err);
+      });
+      
+      // Close popup immediately after sending message
       window.close();
     } catch (error) {
       console.error('Error opening settings:', error);
       this.showError('Failed to open settings');
+      // Close popup after a brief delay to show the error
+      setTimeout(() => window.close(), 2000);
     }
   }
 

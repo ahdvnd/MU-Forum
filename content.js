@@ -4,9 +4,25 @@ class MinervaContentScript {
     this.sidebar = null;
     this.apiData = [];
     this.pollData = new Map();
+    this.currentPage = this.determinePageType(); // Determine page based on URL
     this.setupInterception();
     this.createSidebar();
     this.setupMessageListener();
+  }
+
+  determinePageType() {
+    const url = window.location.href;
+    
+    // Check if this is a page that supports grading
+    if (url.includes('/review') || 
+        url.includes('/grading') || 
+        url.includes('/responses') ||
+        url.includes('/assignments')) {
+      return 'grader';
+    }
+    
+    // Default to unavailable for other pages
+    return 'unavailable';
   }
 
   setupInterception() {
@@ -128,7 +144,20 @@ class MinervaContentScript {
     this.sidebar.id = 'minerva-assistant-sidebar';
     this.sidebar.className = 'minerva-sidebar collapsed';
     
-    // Create sidebar content
+    // Add sidebar to page
+    document.body.appendChild(this.sidebar);
+    
+    // Load the current page content
+    this.loadSidebarPage(this.currentPage);
+  }
+
+  loadSidebarPage(pageName) {
+    this.currentPage = pageName;
+    
+    // Get the page content
+    const pageContent = this.getSidebarPageContent(pageName);
+    
+    // Update sidebar content
     this.sidebar.innerHTML = `
       <div class="sidebar-header">
         <h3>Minerva Assistant</h3>
@@ -137,35 +166,78 @@ class MinervaContentScript {
         </div>
       </div>
       <div class="sidebar-content">
-        <div class="section">
-          <h4>Settings</h4>
-          <button id="open-settings" class="btn">Configure API Key</button>
+        ${pageContent}
+      </div>
+    `;
+    
+    // Setup event listeners based on current page
+    this.setupSidebarEvents();
+    
+    // Ensure close button works
+    this.ensureCloseButtonWorks();
+    
+    // Update sidebar data if on grader page
+    if (pageName === 'grader') {
+      this.updateSidebar();
+    }
+  }
+
+  getSidebarPageContent(pageName) {
+    switch (pageName) {
+      case 'grader':
+        return this.getGraderPageContent();
+      case 'unavailable':
+        return this.getUnavailablePageContent();
+      default:
+        return this.getGraderPageContent();
+    }
+  }
+
+  getGraderPageContent() {
+    return `
+      <div class="section">
+        <h4>Rubric</h4>
+        <textarea id="rubric-input" placeholder="Enter your rubric here or paste Google Sheets link..."></textarea>
+        <button id="save-rubric" class="btn">Save Rubric</button>
+      </div>
+      
+      <div class="section">
+        <h4>Student Responses</h4>
+        <div id="responses-list">
+          <p>No responses detected yet...</p>
         </div>
-        
-        <div class="section">
-          <h4>Rubric</h4>
-          <textarea id="rubric-input" placeholder="Enter your rubric here or paste Google Sheets link..."></textarea>
-          <button id="save-rubric" class="btn">Save Rubric</button>
+      </div>
+      
+      <div class="section">
+        <h4>AI Analysis</h4>
+        <button id="analyze-responses" class="btn btn-primary">Analyze All Responses</button>
+        <div id="analysis-results"></div>
+      </div>
+      
+      <div class="section">
+        <h4>Engagement Metrics</h4>
+        <div id="engagement-metrics">
+          <p>Loading metrics...</p>
         </div>
-        
-        <div class="section">
-          <h4>Student Responses</h4>
-          <div id="responses-list">
-            <p>No responses detected yet...</p>
-          </div>
-        </div>
-        
-        <div class="section">
-          <h4>AI Analysis</h4>
-          <button id="analyze-responses" class="btn btn-primary">Analyze All Responses</button>
-          <div id="analysis-results"></div>
-        </div>
-        
-        <div class="section">
-          <h4>Engagement Metrics</h4>
-          <div id="engagement-metrics">
-            <p>Loading metrics...</p>
-          </div>
+      </div>
+      
+      <div class="section">
+        <button id="close-sidebar-bottom" class="btn btn-secondary">Close Sidebar</button>
+      </div>
+    `;
+  }
+
+  getUnavailablePageContent() {
+    return `
+      <div class="section unavailable-section">
+        <div class="unavailable-content">
+          <div class="unavailable-icon">📄</div>
+          <h4>Nothing Available</h4>
+          <p>Nothing available for this page</p>
+          <p class="unavailable-description">
+            The Minerva Assistant doesn't have any grading tools available for this page. 
+            Navigate to a page with student responses or assignments to use the grading features.
+          </p>
         </div>
         
         <div class="section">
@@ -173,22 +245,6 @@ class MinervaContentScript {
         </div>
       </div>
     `;
-    
-    // Add sidebar to page
-    document.body.appendChild(this.sidebar);
-    
-    // Debug: Check if close button exists
-    const closeBtn = document.getElementById('close-sidebar');
-    console.log('Close button found:', closeBtn ? 'YES' : 'NO');
-    if (closeBtn) {
-      console.log('Close button HTML:', closeBtn.outerHTML);
-    }
-    
-    // Setup event listeners
-    this.setupSidebarEvents();
-    
-    // Ensure close button is visible and functional
-    this.ensureCloseButtonWorks();
   }
 
   ensureCloseButtonWorks() {
@@ -216,30 +272,23 @@ class MinervaContentScript {
   }
 
   setupSidebarEvents() {
-    // Close sidebar (header button)
+    // Close sidebar (header button) - always present
     document.getElementById('close-sidebar').addEventListener('click', () => {
       this.closeSidebar();
     });
     
-    // Close sidebar (bottom button)
-    document.getElementById('close-sidebar-bottom').addEventListener('click', () => {
-      this.closeSidebar();
-    });
+    // Close sidebar (bottom button) - always present
+    const bottomCloseBtn = document.getElementById('close-sidebar-bottom');
+    if (bottomCloseBtn) {
+      bottomCloseBtn.addEventListener('click', () => {
+        this.closeSidebar();
+      });
+    }
     
-    // Open settings
-    document.getElementById('open-settings').addEventListener('click', () => {
-      this.openSettingsModal();
-    });
-    
-    // Save rubric
-    document.getElementById('save-rubric').addEventListener('click', () => {
-      this.saveRubric();
-    });
-    
-    // Analyze responses
-    document.getElementById('analyze-responses').addEventListener('click', () => {
-      this.analyzeAllResponses();
-    });
+    // Grader-specific events
+    if (this.currentPage === 'grader') {
+      this.setupGraderEvents();
+    }
     
     // Close sidebar with Escape key
     document.addEventListener('keydown', (event) => {
@@ -247,6 +296,24 @@ class MinervaContentScript {
         this.closeSidebar();
       }
     });
+  }
+
+  setupGraderEvents() {
+    // Save rubric
+    const saveRubricBtn = document.getElementById('save-rubric');
+    if (saveRubricBtn) {
+      saveRubricBtn.addEventListener('click', () => {
+        this.saveRubric();
+      });
+    }
+    
+    // Analyze responses
+    const analyzeBtn = document.getElementById('analyze-responses');
+    if (analyzeBtn) {
+      analyzeBtn.addEventListener('click', () => {
+        this.analyzeAllResponses();
+      });
+    }
   }
 
   openSettingsModal() {
@@ -265,8 +332,8 @@ class MinervaContentScript {
           <p class="help-text">Your API key is stored locally and never shared.</p>
         </div>
         <div class="modal-footer">
+          <button class="close-modal btn btn-secondary">Cancel</button>
           <button id="save-settings" class="btn btn-primary">Save</button>
-          <button class="close-modal btn">Cancel</button>
         </div>
       </div>
     `;
@@ -459,6 +526,14 @@ class MinervaContentScript {
           });
           break;
          case 'SHOW_SIDEBAR':
+           this.sidebar.classList.remove('collapsed');
+           break;
+         case 'SHOW_GRADER':
+           this.loadSidebarPage('grader');
+           this.sidebar.classList.remove('collapsed');
+           break;
+         case 'SHOW_UNAVAILABLE':
+           this.loadSidebarPage('unavailable');
            this.sidebar.classList.remove('collapsed');
            break;
         case 'OPEN_SETTINGS':
