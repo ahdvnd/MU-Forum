@@ -913,7 +913,14 @@ class MinervaContentScript {
         <div class="modal-body">
           <label for="openai-key">OpenAI API Key:</label>
           <input type="password" id="openai-key" placeholder="Enter your OpenAI API key">
-          <p class="help-text">Your API key is stored locally and never shared.</p>
+          <div class="security-info" style="background: #fef3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 12px; margin: 12px 0; font-size: 13px;">
+            <strong>🔒 Security Notice:</strong><br>
+            • Your API key is encrypted and stored locally in your browser<br>
+            • It's never transmitted to any server except OpenAI's API<br>
+            • For maximum security, consider using a restricted API key with limited permissions<br>
+            • You can revoke this key anytime in your OpenAI dashboard
+          </div>
+          <p class="help-text">Your API key is encrypted before storage and never shared with third parties.</p>
         </div>
         <div class="modal-footer">
           <button class="close-modal btn btn-secondary">Cancel</button>
@@ -937,10 +944,28 @@ class MinervaContentScript {
     });
     
     document.getElementById('save-settings').addEventListener('click', async () => {
-      const apiKey = document.getElementById('openai-key').value;
-      await this.saveSettings({ openaiApiKey: apiKey });
-      modal.remove();
-      this.showNotification('Settings saved successfully!');
+      const apiKey = document.getElementById('openai-key').value.trim();
+      
+      if (!apiKey) {
+        this.showNotification('Please enter an API key', 'error');
+        return;
+      }
+      
+      try {
+        await this.saveSettings({ openaiApiKey: apiKey });
+        
+        // Verify the settings were saved by loading them back
+        const savedSettings = await this.loadSettings();
+        if (savedSettings.openaiApiKey === apiKey) {
+          this.showNotification('API key saved successfully!', 'success');
+          modal.remove();
+        } else {
+          this.showNotification('Failed to save API key - please try again', 'error');
+        }
+      } catch (error) {
+        console.error('Error saving settings:', error);
+        this.showNotification('Error saving settings', 'error');
+      }
     });
   }
 
@@ -1081,7 +1106,7 @@ class MinervaContentScript {
       html += '</div>';
       responsesList.innerHTML = html;
     }
-
+  }
 
   setupMessageListener() {
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

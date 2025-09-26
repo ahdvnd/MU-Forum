@@ -3,6 +3,69 @@ class MinervaForumAssistant {
   constructor() {
     this.apiData = new Map();
     this.setupEventListeners();
+    this.encryptionKey = null;
+  }
+
+  // Generate a simple encryption key based on browser/extension context
+  async getEncryptionKey() {
+    if (this.encryptionKey) return this.encryptionKey;
+    
+    // Use a combination of extension ID and a fixed salt for consistency
+    const extensionId = chrome.runtime.id;
+    const salt = 'minerva-assistant-v1.2.7';
+    const keyMaterial = extensionId + salt;
+    
+    // Create a simple hash-based key (not cryptographically secure but better than plain text)
+    this.encryptionKey = await this.simpleHash(keyMaterial);
+    return this.encryptionKey;
+  }
+
+  // Simple hash function for basic obfuscation
+  async simpleHash(str) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(str);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.slice(0, 16); // Use first 16 bytes as key
+  }
+
+  // Simple XOR encryption/decryption
+  async encryptData(plaintext) {
+    if (!plaintext) return plaintext;
+    
+    const key = await this.getEncryptionKey();
+    const encoder = new TextEncoder();
+    const data = encoder.encode(plaintext);
+    
+    const encrypted = new Uint8Array(data.length);
+    for (let i = 0; i < data.length; i++) {
+      encrypted[i] = data[i] ^ key[i % key.length];
+    }
+    
+    // Convert to base64 for storage
+    return btoa(String.fromCharCode(...encrypted));
+  }
+
+  async decryptData(encryptedData) {
+    if (!encryptedData) return encryptedData;
+    
+    try {
+      const key = await this.getEncryptionKey();
+      
+      // Convert from base64
+      const encrypted = new Uint8Array(atob(encryptedData).split('').map(c => c.charCodeAt(0)));
+      
+      const decrypted = new Uint8Array(encrypted.length);
+      for (let i = 0; i < encrypted.length; i++) {
+        decrypted[i] = encrypted[i] ^ key[i % key.length];
+      }
+      
+      const decoder = new TextDecoder();
+      return decoder.decode(decrypted);
+    } catch (error) {
+      console.error('Decryption failed:', error);
+      return null;
+    }
   }
 
   setupEventListeners() {
@@ -162,17 +225,75 @@ class MinervaForumAssistant {
   }
 
   async saveSettings(settings) {
-    return new Promise((resolve) => {
-      chrome.storage.local.set({ minervaSettings: settings }, resolve);
+    return new Promise(async (resolve) => {
+      try {
+        // First get existing settings, then merge with new settings
+        chrome.storage.local.get(['minervaSettings'], async (result) => {
+          const existingSettings = await this.decryptSettings(result.minervaSettings || {});
+          const mergedSettings = { ...existingSettings, ...settings };
+          
+          console.log('Saving settings (API key will be encrypted)');
+          
+          // Encrypt sensitive data before storing
+          const encryptedSettings = await this.encryptSettings(mergedSettings);
+          
+          chrome.storage.local.set({ minervaSettings: encryptedSettings }, () => {
+            console.log('Settings saved successfully with encryption');
+            resolve();
+          });
+        });
+      } catch (error) {
+        console.error('Error saving settings:', error);
+        resolve();
+      }
     });
   }
 
   async getSettings() {
-    return new Promise((resolve) => {
-      chrome.storage.local.get(['minervaSettings'], (result) => {
-        resolve(result.minervaSettings || {});
-      });
+    return new Promise(async (resolve) => {
+      try {
+        chrome.storage.local.get(['minervaSettings'], async (result) => {
+          const encryptedSettings = result.minervaSettings || {};
+          const decryptedSettings = await this.decryptSettings(encryptedSettings);
+          resolve(decryptedSettings);
+        });
+      } catch (error) {
+        console.error('Error loading settings:', error);
+        resolve({});
+      }
     });
+  }
+
+  // Encrypt sensitive settings
+  async encryptSettings(settings) {
+    const encrypted = { ...settings };
+    
+    // Only encrypt the API key, leave other settings as plain text
+    if (settings.openaiApiKey) {
+      encrypted.openaiApiKey = await this.encryptData(settings.openaiApiKey);
+      encrypted._encrypted = true; // Flag to indicate encryption is used
+    }
+    
+    return encrypted;
+  }
+
+  // Decrypt sensitive settings
+  async decryptSettings(settings) {
+    if (!settings._encrypted) {
+      // Handle legacy unencrypted settings
+      return settings;
+    }
+    
+    const decrypted = { ...settings };
+    
+    if (settings.openaiApiKey) {
+      decrypted.openaiApiKey = await this.decryptData(settings.openaiApiKey);
+    }
+    
+    // Remove the encryption flag from the returned object
+    delete decrypted._encrypted;
+    
+    return decrypted;
   }
 }
 
