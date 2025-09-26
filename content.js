@@ -425,7 +425,9 @@ class MinervaContentScript {
         min-width: auto !important;
       }
       
-      #minerva-assistant-sidebar #rubric-input {
+      #minerva-assistant-sidebar #rubric-input,
+      #minerva-assistant-sidebar #question-input,
+      #minerva-assistant-sidebar #answer-input {
         width: 100% !important;
         height: 120px !important;
         border: 1px solid hsl(214.3 31.8% 91.4%) !important;
@@ -441,13 +443,25 @@ class MinervaContentScript {
         line-height: 1.5 !important;
       }
       
-      #minerva-assistant-sidebar #rubric-input:focus {
+      #minerva-assistant-sidebar #question-input {
+        height: 80px !important;
+      }
+      
+      #minerva-assistant-sidebar #answer-input {
+        height: 100px !important;
+      }
+      
+      #minerva-assistant-sidebar #rubric-input:focus,
+      #minerva-assistant-sidebar #question-input:focus,
+      #minerva-assistant-sidebar #answer-input:focus {
         outline: none !important;
         border-color: hsl(221.2 83.2% 53.3%) !important;
         box-shadow: 0 0 0 2px hsl(221.2 83.2% 53.3% / 0.2) !important;
       }
       
-      #minerva-assistant-sidebar #rubric-input::placeholder {
+      #minerva-assistant-sidebar #rubric-input::placeholder,
+      #minerva-assistant-sidebar #question-input::placeholder,
+      #minerva-assistant-sidebar #answer-input::placeholder {
         color: hsl(215.4 16.3% 46.9%) !important;
       }
       
@@ -738,6 +752,8 @@ class MinervaContentScript {
     // Update sidebar data if on grader page
     if (pageName === 'grader') {
       this.updateSidebar();
+      this.loadQuestionContext();
+      this.loadSavedRubric();
     }
   }
 
@@ -754,6 +770,13 @@ class MinervaContentScript {
 
   getGraderPageContent() {
     return `
+      <div class="section">
+        <h4>Question Context</h4>
+        <textarea id="question-input" placeholder="Enter the question or prompt that students are responding to..."></textarea>
+        <textarea id="answer-input" placeholder="Enter the expected answer, key points, or sample response..."></textarea>
+        <button id="save-context" class="btn">Save Context</button>
+      </div>
+      
       <div class="section">
         <h4>Rubric</h4>
         <textarea id="rubric-input" placeholder="Enter your rubric here or paste Google Sheets link..."></textarea>
@@ -859,6 +882,14 @@ class MinervaContentScript {
   }
 
   setupGraderEvents() {
+    // Save context (question and answer)
+    const saveContextBtn = document.getElementById('save-context');
+    if (saveContextBtn) {
+      saveContextBtn.addEventListener('click', () => {
+        this.saveQuestionContext();
+      });
+    }
+    
     // Save rubric
     const saveRubricBtn = document.getElementById('save-rubric');
     if (saveRubricBtn) {
@@ -898,6 +929,60 @@ class MinervaContentScript {
     this.pollData.clear();
     this.updateSidebar();
     this.showNotification('All responses cleared', 'success');
+  }
+
+  async saveQuestionContext() {
+    const questionText = document.getElementById('question-input').value.trim();
+    const answerText = document.getElementById('answer-input').value.trim();
+    
+    if (!questionText && !answerText) {
+      this.showNotification('Please enter question text or expected answer', 'error');
+      return;
+    }
+    
+    try {
+      await this.saveSettings({ 
+        questionText: questionText,
+        expectedAnswer: answerText
+      });
+      this.showNotification('Question context saved successfully!', 'success');
+    } catch (error) {
+      console.error('Error saving question context:', error);
+      this.showNotification('Error saving question context', 'error');
+    }
+  }
+
+  async loadQuestionContext() {
+    try {
+      const settings = await this.loadSettings();
+      
+      const questionInput = document.getElementById('question-input');
+      const answerInput = document.getElementById('answer-input');
+      
+      if (questionInput && settings.questionText) {
+        questionInput.value = settings.questionText;
+      }
+      
+      if (answerInput && settings.expectedAnswer) {
+        answerInput.value = settings.expectedAnswer;
+      }
+    } catch (error) {
+      console.error('Error loading question context:', error);
+    }
+  }
+
+  async loadSavedRubric() {
+    try {
+      const settings = await this.loadSettings();
+      
+      const rubricInput = document.getElementById('rubric-input');
+      
+      if (rubricInput && settings.rubric) {
+        rubricInput.value = settings.rubric;
+      }
+    } catch (error) {
+      console.error('Error loading saved rubric:', error);
+    }
   }
 
   openSettingsModal() {
@@ -1030,12 +1115,18 @@ class MinervaContentScript {
     
     const analyses = [];
     
+    // Get current question context from the form
+    const questionText = document.getElementById('question-input')?.value.trim() || settings.questionText || '';
+    const expectedAnswer = document.getElementById('answer-input')?.value.trim() || settings.expectedAnswer || '';
+    
     for (const [studentId, response] of this.pollData) {
       try {
         const result = await this.sendMessage({
           type: 'ANALYZE_WITH_AI',
           data: {
             rubric: settings.rubric,
+            questionText: questionText,
+            expectedAnswer: expectedAnswer,
             studentResponse: JSON.stringify(response)
           }
         });

@@ -176,6 +176,10 @@ class MinervaForumAssistant {
             {
               role: 'system',
               content: `You are an AI assistant helping to grade student responses based on a rubric. 
+
+              ${data.questionText ? `Question/Prompt: ${data.questionText}` : ''}
+              
+              ${data.expectedAnswer ? `Expected Answer/Key Points: ${data.expectedAnswer}` : ''}
               
               Rubric: ${data.rubric}
               
@@ -184,6 +188,7 @@ class MinervaForumAssistant {
               2. Detailed comments explaining the score
               3. Specific suggestions for improvement
               
+              Consider the question context and expected answer when evaluating the response.
               Format your response as JSON with keys: score, comments, suggestions`
             },
             {
