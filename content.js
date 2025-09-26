@@ -47,6 +47,9 @@ class MinervaContentScript {
   }
 
   addSelectedTextToResponses(text) {
+    // Remove any previously selected text
+    this.clearSelectedText();
+    
     // Generate a unique ID for this response
     const responseId = `selected_${Date.now()}`;
     
@@ -66,6 +69,15 @@ class MinervaContentScript {
 
     // Show a brief notification
     this.showNotification(`Selected text captured (${text.length} chars)`, 'success');
+  }
+
+  clearSelectedText() {
+    // Remove all previously selected text entries
+    for (const [key, value] of this.pollData) {
+      if (value.source === 'text_selection') {
+        this.pollData.delete(key);
+      }
+    }
   }
 
   determinePageType() {
@@ -353,6 +365,12 @@ class MinervaContentScript {
         margin: 0 !important;
       }
       
+      #minerva-assistant-sidebar .header-buttons {
+        display: flex !important;
+        gap: 6px !important;
+        align-items: center !important;
+      }
+      
       #minerva-assistant-sidebar .btn {
         display: inline-flex !important;
         align-items: center !important;
@@ -499,38 +517,6 @@ class MinervaContentScript {
         font-style: italic !important;
       }
       
-      #minerva-assistant-sidebar .metrics {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 12px !important;
-      }
-      
-      #minerva-assistant-sidebar .metric {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        padding: 12px 16px !important;
-        background: hsl(210 40% 98%) !important;
-        border: 1px solid hsl(214.3 31.8% 91.4%) !important;
-        border-radius: 6px !important;
-        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
-      }
-      
-      #minerva-assistant-sidebar .metric:hover {
-        background: hsl(210 40% 96%) !important;
-      }
-      
-      #minerva-assistant-sidebar .metric-label {
-        font-size: 13px !important;
-        color: hsl(215.4 16.3% 46.9%) !important;
-        font-weight: 500 !important;
-      }
-      
-      #minerva-assistant-sidebar .metric-value {
-        font-size: 16px !important;
-        font-weight: 600 !important;
-        color: hsl(222.2 84% 4.9%) !important;
-      }
       
       #minerva-assistant-sidebar .unavailable-section {
         text-align: center !important;
@@ -777,7 +763,10 @@ class MinervaContentScript {
       <div class="section">
         <div class="section-header">
           <h4>Student Responses</h4>
-          <button id="clear-responses" class="btn-small btn-secondary" title="Clear all responses">Clear</button>
+          <div class="header-buttons">
+            <button id="clear-selected" class="btn-small btn-secondary" title="Clear selected text only">Clear Selected</button>
+            <button id="clear-all-responses" class="btn-small btn-secondary" title="Clear all responses">Clear All</button>
+          </div>
         </div>
         <div id="responses-list">
           <p>No responses detected yet...</p>
@@ -788,13 +777,6 @@ class MinervaContentScript {
         <h4>AI Analysis</h4>
         <button id="analyze-responses" class="btn btn-primary">Analyze All Responses</button>
         <div id="analysis-results"></div>
-      </div>
-      
-      <div class="section">
-        <h4>Engagement Metrics</h4>
-        <div id="engagement-metrics">
-          <p>Loading metrics...</p>
-        </div>
       </div>
       
       <div class="section">
@@ -893,16 +875,26 @@ class MinervaContentScript {
       });
     }
 
-    // Clear responses
-    const clearBtn = document.getElementById('clear-responses');
-    if (clearBtn) {
-      clearBtn.addEventListener('click', () => {
-        this.clearResponses();
+    // Clear selected text only
+    const clearSelectedBtn = document.getElementById('clear-selected');
+    if (clearSelectedBtn) {
+      clearSelectedBtn.addEventListener('click', () => {
+        this.clearSelectedText();
+        this.updateSidebar();
+        this.showNotification('Selected text cleared', 'success');
+      });
+    }
+
+    // Clear all responses
+    const clearAllBtn = document.getElementById('clear-all-responses');
+    if (clearAllBtn) {
+      clearAllBtn.addEventListener('click', () => {
+        this.clearAllResponses();
       });
     }
   }
 
-  clearResponses() {
+  clearAllResponses() {
     this.pollData.clear();
     this.updateSidebar();
     this.showNotification('All responses cleared', 'success');
@@ -1089,31 +1081,7 @@ class MinervaContentScript {
       html += '</div>';
       responsesList.innerHTML = html;
     }
-    
-    // Update engagement metrics
-    this.updateEngagementMetrics();
-  }
 
-  updateEngagementMetrics() {
-    const metricsDiv = document.getElementById('engagement-metrics');
-    
-    const totalResponses = this.pollData.size;
-    const avgResponseLength = Array.from(this.pollData.values())
-      .reduce((sum, response) => sum + JSON.stringify(response).length, 0) / totalResponses || 0;
-    
-    metricsDiv.innerHTML = `
-      <div class="metrics">
-        <div class="metric">
-          <span class="metric-label">Total Responses:</span>
-          <span class="metric-value">${totalResponses}</span>
-        </div>
-        <div class="metric">
-          <span class="metric-label">Avg Response Length:</span>
-          <span class="metric-value">${Math.round(avgResponseLength)} chars</span>
-        </div>
-      </div>
-    `;
-  }
 
   setupMessageListener() {
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
