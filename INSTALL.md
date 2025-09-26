@@ -19,9 +19,9 @@
 
 ### 3. Initial Setup
 1. **Navigate to Minerva Forum**: Go to `https://forum.minerva.edu/` and log in
-2. **Click the extension icon** in your toolbar to open the popup
+2. **Click the extension icon** in your toolbar to open the popup menu
 3. **Configure API Key**: Click "Configure Settings" and enter your OpenAI API key
-4. **Open the sidebar**: Click "Open Assistant Sidebar" to access the full interface
+4. **Show the sidebar**: Click "Show Sidebar" to access the full interface
 
 ### 4. Set Up Your First Rubric
 1. In the sidebar, find the "Rubric" section
@@ -32,9 +32,14 @@
 
 ### 5. Start Using the Assistant
 1. Navigate to pages with student poll responses or assignments
-2. The extension will automatically detect and capture student responses
-3. Click "Analyze All Responses" to get AI-powered grading assistance
-4. Review the scores, comments, and suggestions provided
+2. Click the extension icon and then "Show Sidebar" to open the assistant
+3. The extension will automatically detect and capture student responses
+4. Click "Analyze All Responses" to get AI-powered grading assistance
+5. Review the scores, comments, and suggestions provided
+6. Close the sidebar when finished using any of these methods:
+   - Click the × button in the sidebar header
+   - Click the "Close Sidebar" button at the bottom
+   - Press the Escape key
 
 ## Troubleshooting
 

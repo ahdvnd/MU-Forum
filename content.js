@@ -126,13 +126,15 @@ class MinervaContentScript {
     // Create sidebar container
     this.sidebar = document.createElement('div');
     this.sidebar.id = 'minerva-assistant-sidebar';
-    this.sidebar.className = 'minerva-sidebar';
+    this.sidebar.className = 'minerva-sidebar collapsed';
     
     // Create sidebar content
     this.sidebar.innerHTML = `
       <div class="sidebar-header">
         <h3>Minerva Assistant</h3>
-        <button id="toggle-sidebar" class="toggle-btn">−</button>
+        <div class="header-controls">
+          <button id="close-sidebar" class="close-btn" title="Close Sidebar">×</button>
+        </div>
       </div>
       <div class="sidebar-content">
         <div class="section">
@@ -165,20 +167,63 @@ class MinervaContentScript {
             <p>Loading metrics...</p>
           </div>
         </div>
+        
+        <div class="section">
+          <button id="close-sidebar-bottom" class="btn btn-secondary">Close Sidebar</button>
+        </div>
       </div>
     `;
     
     // Add sidebar to page
     document.body.appendChild(this.sidebar);
     
+    // Debug: Check if close button exists
+    const closeBtn = document.getElementById('close-sidebar');
+    console.log('Close button found:', closeBtn ? 'YES' : 'NO');
+    if (closeBtn) {
+      console.log('Close button HTML:', closeBtn.outerHTML);
+    }
+    
     // Setup event listeners
     this.setupSidebarEvents();
+    
+    // Ensure close button is visible and functional
+    this.ensureCloseButtonWorks();
+  }
+
+  ensureCloseButtonWorks() {
+    // Double-check that close button exists and is functional
+    const closeBtn = document.getElementById('close-sidebar');
+    if (!closeBtn) {
+      console.error('Close button not found! Adding manually...');
+      const header = this.sidebar.querySelector('.sidebar-header');
+      const controls = header.querySelector('.header-controls');
+      if (controls) {
+        controls.innerHTML = '<button id="close-sidebar" class="close-btn" title="Close Sidebar">×</button>';
+        // Re-add event listener
+        document.getElementById('close-sidebar').addEventListener('click', () => {
+          this.closeSidebar();
+        });
+      }
+    }
+  }
+
+  closeSidebar() {
+    this.sidebar.classList.add('collapsed');
+    console.log('Sidebar closed');
+    // Optional: Show a brief notification
+    // this.showNotification('Sidebar closed', 'success');
   }
 
   setupSidebarEvents() {
-    // Toggle sidebar
-    document.getElementById('toggle-sidebar').addEventListener('click', () => {
-      this.sidebar.classList.toggle('collapsed');
+    // Close sidebar (header button)
+    document.getElementById('close-sidebar').addEventListener('click', () => {
+      this.closeSidebar();
+    });
+    
+    // Close sidebar (bottom button)
+    document.getElementById('close-sidebar-bottom').addEventListener('click', () => {
+      this.closeSidebar();
     });
     
     // Open settings
@@ -194,6 +239,13 @@ class MinervaContentScript {
     // Analyze responses
     document.getElementById('analyze-responses').addEventListener('click', () => {
       this.analyzeAllResponses();
+    });
+    
+    // Close sidebar with Escape key
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !this.sidebar.classList.contains('collapsed')) {
+        this.closeSidebar();
+      }
     });
   }
 
@@ -406,9 +458,9 @@ class MinervaContentScript {
             analyzedCount: document.querySelectorAll('.student-analysis').length
           });
           break;
-        case 'OPEN_SIDEBAR':
-          this.sidebar.classList.remove('collapsed');
-          break;
+         case 'SHOW_SIDEBAR':
+           this.sidebar.classList.remove('collapsed');
+           break;
         case 'OPEN_SETTINGS':
           this.openSettingsModal();
           break;

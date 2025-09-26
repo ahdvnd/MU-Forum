@@ -18,7 +18,7 @@ A Chrome extension that provides AI-powered grading assistance for instructors u
 3. **Enable Developer mode** (toggle in the top right)
 4. **Click "Load unpacked"** and select the extension folder
 5. **Navigate to** `https://forum.minerva.edu/` and log in
-6. **Click the extension icon** to open the popup and configure your settings
+6. **Click the extension icon** to open the popup menu
 
 ## Setup
 
@@ -29,7 +29,7 @@ A Chrome extension that provides AI-powered grading assistance for instructors u
 - Your API key is stored locally and never shared
 
 ### 2. Set Up a Rubric
-- Open the assistant sidebar on any Minerva Forum page
+- Click the extension icon and then "Show Sidebar" to open the assistant sidebar
 - In the "Rubric" section, either:
   - Type your rubric directly into the text area
   - Paste a link to a public Google Sheets document containing your rubric
@@ -37,9 +37,14 @@ A Chrome extension that provides AI-powered grading assistance for instructors u
 
 ### 3. Start Grading
 - Navigate to pages with student poll responses
+- Click the extension icon and then "Show Sidebar" to open the assistant
 - The extension will automatically detect and capture response data
 - Click "Analyze All Responses" to get AI-powered feedback
 - Review scores, comments, and suggestions for each student
+- Close the sidebar when done using any of these methods:
+  - Click the × button in the sidebar header
+  - Click the "Close Sidebar" button at the bottom of the sidebar
+  - Press the Escape key on your keyboard
 
 ## How It Works
 

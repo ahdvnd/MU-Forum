@@ -85,15 +85,15 @@ class MinervaPopup {
     } else {
       successContainer.innerHTML = `
         <div class="success-message">
-          Extension is ready! Open the sidebar to start grading with AI assistance.
+          Extension is ready! Click "Show Sidebar" to start grading with AI assistance.
         </div>
       `;
     }
   }
 
   setupEventListeners() {
-    document.getElementById('open-sidebar').addEventListener('click', () => {
-      this.openSidebar();
+    document.getElementById('show-sidebar').addEventListener('click', () => {
+      this.showSidebar();
     });
 
     document.getElementById('configure-settings').addEventListener('click', () => {
@@ -105,7 +105,7 @@ class MinervaPopup {
     });
   }
 
-  async openSidebar() {
+  async showSidebar() {
     try {
       const tabs = await this.getCurrentTab();
       const currentTab = tabs[0];
@@ -115,11 +115,11 @@ class MinervaPopup {
         return;
       }
 
-      await this.sendMessageToTab(currentTab.id, { type: 'OPEN_SIDEBAR' });
+      await this.sendMessageToTab(currentTab.id, { type: 'SHOW_SIDEBAR' });
       window.close();
     } catch (error) {
-      console.error('Error opening sidebar:', error);
-      this.showError('Failed to open sidebar');
+      console.error('Error showing sidebar:', error);
+      this.showError('Failed to show sidebar');
     }
   }
 

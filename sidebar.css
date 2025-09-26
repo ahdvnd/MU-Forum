@@ -17,7 +17,7 @@
 }
 
 .minerva-sidebar.collapsed {
-  transform: translateX(310px);
+  transform: translateX(100%);
 }
 
 .sidebar-header {
@@ -38,7 +38,13 @@
   font-weight: 600;
 }
 
-.toggle-btn {
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle-btn, .close-btn {
   background: none;
   border: none;
   color: white;
@@ -49,8 +55,31 @@
   transition: background-color 0.2s;
 }
 
-.toggle-btn:hover {
+.toggle-btn:hover, .close-btn:hover {
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+.close-btn {
+  font-size: 24px;
+  font-weight: bold;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  line-height: 1;
+  user-select: none;
+}
+
+.close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.close-btn:active {
+  background-color: rgba(255, 255, 255, 0.3);
+  transform: scale(0.95);
 }
 
 .sidebar-content {
