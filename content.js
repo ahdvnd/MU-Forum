@@ -801,13 +801,160 @@ class MinervaContentScript {
       #minerva-assistant-sidebar .comments strong {
         color: hsl(222.2 84% 4.9%) !important;
       }
+      
+      /* Analytics Dashboard Styles */
+      #minerva-assistant-sidebar .analytics-summary {
+        margin-bottom: 16px !important;
+      }
+      
+      #minerva-assistant-sidebar .summary-grid {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 12px !important;
+      }
+      
+      #minerva-assistant-sidebar .summary-item {
+        background: hsl(210 40% 98%) !important;
+        border: 1px solid hsl(214.3 31.8% 91.4%) !important;
+        border-radius: 6px !important;
+        padding: 12px !important;
+        text-align: center !important;
+      }
+      
+      #minerva-assistant-sidebar .summary-label {
+        font-size: 11px !important;
+        color: hsl(215.4 16.3% 46.9%) !important;
+        font-weight: 500 !important;
+        margin-bottom: 4px !important;
+      }
+      
+      #minerva-assistant-sidebar .summary-value {
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        color: hsl(222.2 84% 4.9%) !important;
+        margin-bottom: 2px !important;
+      }
+      
+      #minerva-assistant-sidebar .summary-detail {
+        font-size: 10px !important;
+        color: hsl(215.4 16.3% 46.9%) !important;
+      }
+      
+      #minerva-assistant-sidebar .student-cards {
+        max-height: 400px !important;
+        overflow-y: auto !important;
+      }
+      
+      #minerva-assistant-sidebar .student-card {
+        background: hsl(210 40% 98%) !important;
+        border: 1px solid hsl(214.3 31.8% 91.4%) !important;
+        border-radius: 8px !important;
+        padding: 16px !important;
+        margin-bottom: 12px !important;
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      }
+      
+      #minerva-assistant-sidebar .student-card:hover {
+        background: hsl(210 40% 96%) !important;
+        border-color: hsl(214.3 31.8% 85%) !important;
+      }
+      
+      #minerva-assistant-sidebar .student-header {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin-bottom: 12px !important;
+        padding-bottom: 8px !important;
+        border-bottom: 1px solid hsl(214.3 31.8% 91.4%) !important;
+      }
+      
+      #minerva-assistant-sidebar .student-name {
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        color: hsl(222.2 84% 4.9%) !important;
+      }
+      
+      #minerva-assistant-sidebar .engagement-score {
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        padding: 4px 8px !important;
+        border-radius: 4px !important;
+        border: 1px solid !important;
+      }
+      
+      #minerva-assistant-sidebar .engagement-score.excellent {
+        background: hsl(142.1 76.2% 36.3% / 0.15) !important;
+        color: hsl(142.1 76.2% 36.3%) !important;
+        border-color: hsl(142.1 76.2% 36.3% / 0.3) !important;
+      }
+      
+      #minerva-assistant-sidebar .engagement-score.good {
+        background: hsl(47.9 95.8% 53.1% / 0.15) !important;
+        color: hsl(45.4 93.4% 47.5%) !important;
+        border-color: hsl(47.9 95.8% 53.1% / 0.3) !important;
+      }
+      
+      #minerva-assistant-sidebar .engagement-score.needs-work {
+        background: hsl(24.6 95% 53.1% / 0.15) !important;
+        color: hsl(20.5 90.2% 48.2%) !important;
+        border-color: hsl(24.6 95% 53.1% / 0.3) !important;
+      }
+      
+      #minerva-assistant-sidebar .engagement-score.poor {
+        background: hsl(0 62.8% 30.6% / 0.15) !important;
+        color: hsl(0 62.8% 30.6%) !important;
+        border-color: hsl(0 62.8% 30.6% / 0.3) !important;
+      }
+      
+      #minerva-assistant-sidebar .student-metrics {
+        display: grid !important;
+        gap: 6px !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        font-size: 12px !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-label {
+        color: hsl(215.4 16.3% 46.9%) !important;
+        font-weight: 500 !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-value {
+        color: hsl(222.2 84% 4.9%) !important;
+        font-weight: 600 !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-value.good {
+        color: hsl(142.1 76.2% 36.3%) !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-value.warning {
+        color: hsl(38.4 92% 50%) !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-value.zero,
+      #minerva-assistant-sidebar .metric-value.absent {
+        color: hsl(0 62.8% 30.6%) !important;
+      }
+      
+      #minerva-assistant-sidebar .error-text {
+        color: hsl(0 62.8% 30.6%) !important;
+        font-style: italic !important;
+        text-align: center !important;
+        padding: 20px !important;
+      }
     `;
     
     document.head.appendChild(styleElement);
   }
 
-  loadSidebarPage(pageName) {
+  loadSidebarPage(pageName, classId = null) {
     this.currentPage = pageName;
+    this.currentClassId = classId;
     
     // Get the page content
     const pageContent = this.getSidebarPageContent(pageName);
@@ -831,11 +978,13 @@ class MinervaContentScript {
     // Ensure close button works
     this.ensureCloseButtonWorks();
     
-    // Update sidebar data if on grader page
+    // Update sidebar data based on page type
     if (pageName === 'grader') {
       this.updateSidebar();
       this.loadQuestionContext();
       this.loadSavedRubric();
+    } else if (pageName === 'analytics' && classId) {
+      this.loadAnalyticsData(classId);
     }
   }
 
@@ -843,6 +992,8 @@ class MinervaContentScript {
     switch (pageName) {
       case 'grader':
         return this.getGraderPageContent();
+      case 'analytics':
+        return this.getAnalyticsPageContent();
       case 'unavailable':
         return this.getUnavailablePageContent();
       default:
@@ -882,6 +1033,33 @@ class MinervaContentScript {
         <h4>AI Analysis</h4>
         <button id="analyze-responses" class="btn btn-primary">Analyze All Responses</button>
         <div id="analysis-results"></div>
+      </div>
+      
+      <div class="section">
+        <button id="close-sidebar-bottom" class="btn btn-secondary">Close Sidebar</button>
+      </div>
+    `;
+  }
+
+  getAnalyticsPageContent() {
+    return `
+      <div class="section">
+        <div class="section-header">
+          <h4>Class Analytics</h4>
+          <div class="header-buttons">
+            <button id="refresh-analytics" class="btn-small btn-secondary">Refresh</button>
+          </div>
+        </div>
+        <div id="class-summary">
+          <p>Loading class metrics...</p>
+        </div>
+      </div>
+      
+      <div class="section">
+        <h4>Student Engagement</h4>
+        <div id="student-analytics">
+          <p>Loading student data...</p>
+        </div>
       </div>
       
       <div class="section">
@@ -948,9 +1126,11 @@ class MinervaContentScript {
       });
     }
     
-    // Grader-specific events
+    // Page-specific events
     if (this.currentPage === 'grader') {
       this.setupGraderEvents();
+    } else if (this.currentPage === 'analytics') {
+      this.setupAnalyticsEvents();
     }
     
     // Close sidebar with Escape key - only when sidebar is open
@@ -1003,6 +1183,18 @@ class MinervaContentScript {
     if (clearAllBtn) {
       clearAllBtn.addEventListener('click', () => {
         this.clearAllResponses();
+      });
+    }
+  }
+
+  setupAnalyticsEvents() {
+    // Refresh analytics data
+    const refreshBtn = document.getElementById('refresh-analytics');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => {
+        if (this.currentClassId) {
+          this.loadAnalyticsData(this.currentClassId);
+        }
       });
     }
   }
@@ -1070,6 +1262,201 @@ class MinervaContentScript {
     } catch (error) {
       console.error('Error loading saved rubric:', error);
     }
+  }
+
+  async loadAnalyticsData(classId) {
+    try {
+      const response = await fetch(`https://forum.minerva.edu/api/v1/analytics/class/${classId}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Analytics API error: ${response.status}`);
+      }
+
+      const analyticsData = await response.json();
+      this.displayAnalyticsData(analyticsData);
+      
+    } catch (error) {
+      console.error('Error loading analytics data:', error);
+      this.showNotification('Failed to load analytics data', 'error');
+      
+      // Show error in the analytics containers
+      const classSummary = document.getElementById('class-summary');
+      const studentAnalytics = document.getElementById('student-analytics');
+      
+      if (classSummary) {
+        classSummary.innerHTML = '<p class="error-text">Failed to load class metrics</p>';
+      }
+      
+      if (studentAnalytics) {
+        studentAnalytics.innerHTML = '<p class="error-text">Failed to load student data</p>';
+      }
+    }
+  }
+
+  displayAnalyticsData(data) {
+    this.displayClassSummary(data);
+    this.displayStudentEngagement(data['user-engagement'] || data.userEngagement || []);
+  }
+
+  displayClassSummary(data) {
+    const classSummary = document.getElementById('class-summary');
+    if (!classSummary) return;
+
+    const instructorTalkTime = data['instructor-talk-time-summary'] || data.instructorTalkTimesSummary;
+    const studentTalkTime = data['student-talk-time-summary'] || data.studentTalkTimeSummary;
+    const attendance = data['attendance-summary'] || data.attendanceSummary;
+    const breakouts = data['breakout-summary'] || data.breakoutSummary;
+    const polls = data['polls-summary'] || data.pollsSummary;
+
+    classSummary.innerHTML = `
+      <div class="analytics-summary">
+        <div class="summary-grid">
+          <div class="summary-item">
+            <div class="summary-label">Instructor Talk Time</div>
+            <div class="summary-value">${instructorTalkTime?.percentage || 0}%</div>
+            <div class="summary-detail">${Math.round((instructorTalkTime?.['summary-value'] || instructorTalkTime?.summaryValue || 0) / 60)} minutes</div>
+          </div>
+          
+          <div class="summary-item">
+            <div class="summary-label">Student Talk Time</div>
+            <div class="summary-value">${studentTalkTime?.percentage || 0}%</div>
+            <div class="summary-detail">Avg: ${studentTalkTime?.['summary-value'] || studentTalkTime?.summaryValue || 0}s per student</div>
+          </div>
+          
+          <div class="summary-item">
+            <div class="summary-label">Attendance</div>
+            <div class="summary-value">${(attendance?.['total-class-users'] || attendance?.totalClassUsers || 0) - (attendance?.['total-absences'] || attendance?.totalAbsences || 0)}/${attendance?.['total-class-users'] || attendance?.totalClassUsers || 0}</div>
+            <div class="summary-detail">${attendance?.['total-absences'] || attendance?.totalAbsences || 0} absent</div>
+          </div>
+          
+          <div class="summary-item">
+            <div class="summary-label">Breakouts</div>
+            <div class="summary-value">${breakouts?.['num-breakouts'] || breakouts?.numBreakouts || 0}</div>
+            <div class="summary-detail">${Math.round((breakouts?.['breakout-duration-in-seconds'] || breakouts?.breakoutDurationInSeconds || 0) / 60)} min total</div>
+          </div>
+          
+          <div class="summary-item">
+            <div class="summary-label">Polls</div>
+            <div class="summary-value">${polls?.['polls-count'] || polls?.pollsCount || 0}</div>
+            <div class="summary-detail">Class ${polls?.['class-count'] || polls?.classCount || 0}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  displayStudentEngagement(students) {
+    const studentAnalytics = document.getElementById('student-analytics');
+    if (!studentAnalytics) return;
+
+    if (!students.length) {
+      studentAnalytics.innerHTML = '<p>No student engagement data available</p>';
+      return;
+    }
+
+    // Sort students by engagement score (calculated from multiple metrics)
+    const sortedStudents = students.sort((a, b) => {
+      const scoreA = this.calculateEngagementScore(a);
+      const scoreB = this.calculateEngagementScore(b);
+      return scoreB - scoreA;
+    });
+
+    let html = '<div class="student-cards">';
+    
+    sortedStudents.forEach(student => {
+      const engagementScore = this.calculateEngagementScore(student);
+      const talkTime = student['talk-time'] || student.talkTime || {};
+      const breakoutTalkTime = student['breakout-talk-time'] || student.breakoutTalkTime || {};
+      
+      html += `
+        <div class="student-card">
+          <div class="student-header">
+            <div class="student-name">${student.user?.['first-name'] || student.user?.firstName || 'Unknown'} ${student.user?.['last-name'] || student.user?.lastName || ''}</div>
+          </div>
+          
+          <div class="student-metrics">
+            <div class="metric-row">
+              <span class="metric-label">Talk Time:</span>
+              <span class="metric-value ${talkTime.status?.toLowerCase()}">${talkTime['duration-seconds'] || talkTime.durationSeconds || 0}s (${talkTime.status || 'UNKNOWN'})</span>
+            </div>
+            
+            <div class="metric-row">
+              <span class="metric-label">Breakout Talk:</span>
+              <span class="metric-value ${breakoutTalkTime.status?.toLowerCase()}">${breakoutTalkTime['duration-seconds'] || breakoutTalkTime.durationSeconds || 0}s (${breakoutTalkTime.status || 'UNKNOWN'})</span>
+            </div>
+            
+            <div class="metric-row">
+              <span class="metric-label">Focus:</span>
+              <span class="metric-value">${Math.round(student['window-focus-percentage'] || student.windowFocusPercentage || 0)}%</span>
+            </div>
+            
+            <div class="metric-row">
+              <span class="metric-label">Hand Raises:</span>
+              <span class="metric-value">${student['hand-raises'] || student.handRaises || 0}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    
+    html += '</div>';
+    studentAnalytics.innerHTML = html;
+  }
+
+  calculateEngagementScore(student) {
+    // Calculate a composite engagement score from various metrics
+    let score = 0;
+    
+    // Focus percentage (40% weight)
+    const focusPercentage = student['window-focus-percentage'] || student.windowFocusPercentage || 0;
+    score += focusPercentage * 0.4;
+    
+    // Talk time status (30% weight)
+    const talkTime = student['talk-time'] || student.talkTime || {};
+    const talkTimeScore = this.getStatusScore(talkTime.status);
+    score += talkTimeScore * 30 * 0.3;
+    
+    // Breakout talk time status (20% weight)
+    const breakoutTalkTime = student['breakout-talk-time'] || student.breakoutTalkTime || {};
+    const breakoutScore = this.getStatusScore(breakoutTalkTime.status);
+    score += breakoutScore * 30 * 0.2;
+    
+    // Activity metrics (10% weight)
+    const reactions = student.reactions || 0;
+    const handRaises = student['hand-raises'] || student.handRaises || 0;
+    const chatMessages = student['chat-messages'] || student.chatMessages || 0;
+    
+    const activityScore = Math.min(100, 
+      (reactions * 2) + 
+      (handRaises * 5) + 
+      (chatMessages * 3)
+    );
+    score += activityScore * 0.1;
+    
+    return Math.round(Math.max(0, Math.min(100, score)));
+  }
+
+  getStatusScore(status) {
+    switch(status) {
+      case 'GOOD': return 100;
+      case 'WARNING': return 60;
+      case 'ZERO': return 20;
+      case 'ABSENT': return 0;
+      default: return 50;
+    }
+  }
+
+  getEngagementClass(score) {
+    if (score >= 80) return 'excellent';
+    if (score >= 60) return 'good';
+    if (score >= 40) return 'needs-work';
+    return 'poor';
   }
 
   openSettingsModal() {
@@ -1328,6 +1715,10 @@ class MinervaContentScript {
            break;
          case 'SHOW_UNAVAILABLE':
            this.loadSidebarPage('unavailable');
+           this.sidebar.classList.remove('collapsed');
+           break;
+         case 'SHOW_ANALYTICS':
+           this.loadSidebarPage('analytics', request.classId);
            this.sidebar.classList.remove('collapsed');
            break;
         case 'OPEN_SETTINGS':

@@ -70,6 +70,7 @@ class MinervaPopup {
   displayCourseInfo(url) {
     const courseInfo = this.parseMinervaUrl(url);
     const courseInfoCard = document.getElementById('course-info-card');
+    const analyticsBtn = document.getElementById('show-analytics');
     
     // Only show the card if we found at least a course ID
     if (courseInfo.courseId) {
@@ -88,17 +89,25 @@ class MinervaPopup {
         document.getElementById('section-id').className = 'status-value warning';
       }
       
-      // Update class ID
+      // Update class ID and show/hide analytics button
       if (courseInfo.classId) {
         document.getElementById('class-id').textContent = courseInfo.classId;
         document.getElementById('class-id').className = 'status-value success';
+        
+        // Show analytics button when class ID is available
+        analyticsBtn.style.display = 'block';
+        analyticsBtn.setAttribute('data-class-id', courseInfo.classId);
       } else {
         document.getElementById('class-id').textContent = 'Not Available';
         document.getElementById('class-id').className = 'status-value warning';
+        
+        // Hide analytics button when no class ID
+        analyticsBtn.style.display = 'none';
       }
     } else {
-      // Hide the card if no course info found
+      // Hide the card and analytics button if no course info found
       courseInfoCard.style.display = 'none';
+      analyticsBtn.style.display = 'none';
     }
   }
 
@@ -141,6 +150,10 @@ class MinervaPopup {
       this.showSidebar();
     });
 
+    document.getElementById('show-analytics').addEventListener('click', () => {
+      this.showAnalytics();
+    });
+
     document.getElementById('configure-settings').addEventListener('click', () => {
       this.configureSettings();
     });
@@ -178,6 +191,47 @@ class MinervaPopup {
       console.error('Error showing sidebar:', error);
       this.showError('Failed to show sidebar');
       // Close popup after a brief delay to show the error
+      setTimeout(() => window.close(), 2000);
+    }
+  }
+
+  async showAnalytics() {
+    try {
+      const tabs = await this.getCurrentTab();
+      const currentTab = tabs[0];
+      
+      if (!currentTab.url.includes('forum.minerva.edu')) {
+        this.showError('Please navigate to forum.minerva.edu first');
+        setTimeout(() => window.close(), 2000);
+        return;
+      }
+
+      const analyticsBtn = document.getElementById('show-analytics');
+      const classId = analyticsBtn.getAttribute('data-class-id');
+      
+      if (!classId) {
+        this.showError('No class ID available for analytics');
+        setTimeout(() => window.close(), 2000);
+        return;
+      }
+
+      // Disable button and show loading state
+      analyticsBtn.textContent = 'Loading...';
+      analyticsBtn.disabled = true;
+
+      // Send message to show analytics sidebar with class ID
+      this.sendMessageToTab(currentTab.id, { 
+        type: 'SHOW_ANALYTICS',
+        classId: classId 
+      }).catch(err => {
+        console.log('Message send failed, but closing popup anyway:', err);
+      });
+      
+      // Close popup immediately after sending message
+      window.close();
+    } catch (error) {
+      console.error('Error showing analytics:', error);
+      this.showError('Failed to show analytics');
       setTimeout(() => window.close(), 2000);
     }
   }
