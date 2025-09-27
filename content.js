@@ -83,6 +83,9 @@ class MinervaContentScript {
   determinePageType() {
     const url = window.location.href;
     
+    // Parse the URL to get course/section/class info
+    this.courseInfo = this.parseMinervaUrl(url);
+    
     // Check if this is a review page with the specific pattern
     const reviewPagePattern = /\/app\/courses\/\d+\/sections\/\d+\/classes\/\d+\/review/;
     if (reviewPagePattern.test(url)) {
@@ -101,6 +104,22 @@ class MinervaContentScript {
     // Default to unavailable for other pages
     this.isReviewPage = false;
     return 'unavailable';
+  }
+
+  parseMinervaUrl(url) {
+    // Parse URLs like: https://forum.minerva.edu/app/courses/3736/sections/12827/classes/95942
+    const urlPattern = /\/app\/courses\/(\d+)(?:\/sections\/(\d+))?(?:\/classes\/(\d+))?/;
+    const match = url.match(urlPattern);
+    
+    if (!match) {
+      return { courseId: null, sectionId: null, classId: null };
+    }
+    
+    return {
+      courseId: match[1] || null,
+      sectionId: match[2] || null, 
+      classId: match[3] || null
+    };
   }
 
   setupInterception() {

@@ -22,6 +22,11 @@ class MinervaPopup {
       document.getElementById('page-status').textContent = isMinervaForum ? 'Minerva Forum' : 'Other Site';
       document.getElementById('page-status').className = `status-value ${isMinervaForum ? 'success' : 'warning'}`;
 
+      // Parse and display course/section/class info if on Minerva Forum
+      if (isMinervaForum) {
+        this.displayCourseInfo(currentTab.url);
+      }
+
       // Get settings
       const settings = await this.getSettings();
       
@@ -43,6 +48,57 @@ class MinervaPopup {
     } catch (error) {
       console.error('Error loading status:', error);
       this.showError('Failed to load extension status');
+    }
+  }
+
+  parseMinervaUrl(url) {
+    // Parse URLs like: https://forum.minerva.edu/app/courses/3736/sections/12827/classes/95942
+    const urlPattern = /\/app\/courses\/(\d+)(?:\/sections\/(\d+))?(?:\/classes\/(\d+))?/;
+    const match = url.match(urlPattern);
+    
+    if (!match) {
+      return { courseId: null, sectionId: null, classId: null };
+    }
+    
+    return {
+      courseId: match[1] || null,
+      sectionId: match[2] || null, 
+      classId: match[3] || null
+    };
+  }
+
+  displayCourseInfo(url) {
+    const courseInfo = this.parseMinervaUrl(url);
+    const courseInfoCard = document.getElementById('course-info-card');
+    
+    // Only show the card if we found at least a course ID
+    if (courseInfo.courseId) {
+      courseInfoCard.style.display = 'block';
+      
+      // Update course ID
+      document.getElementById('course-id').textContent = courseInfo.courseId;
+      document.getElementById('course-id').className = 'status-value success';
+      
+      // Update section ID
+      if (courseInfo.sectionId) {
+        document.getElementById('section-id').textContent = courseInfo.sectionId;
+        document.getElementById('section-id').className = 'status-value success';
+      } else {
+        document.getElementById('section-id').textContent = 'Not Available';
+        document.getElementById('section-id').className = 'status-value warning';
+      }
+      
+      // Update class ID
+      if (courseInfo.classId) {
+        document.getElementById('class-id').textContent = courseInfo.classId;
+        document.getElementById('class-id').className = 'status-value success';
+      } else {
+        document.getElementById('class-id').textContent = 'Not Available';
+        document.getElementById('class-id').className = 'status-value warning';
+      }
+    } else {
+      // Hide the card if no course info found
+      courseInfoCard.style.display = 'none';
     }
   }
 
