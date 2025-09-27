@@ -719,6 +719,69 @@ class MinervaContentScript {
         color: hsl(0 62.8% 30.6%) !important;
         border-color: hsl(0 62.8% 30.6% / 0.3) !important;
       }
+      
+      /* Analysis Results Styles */
+      #minerva-assistant-sidebar .analysis-results {
+        margin-top: 16px !important;
+      }
+      
+      #minerva-assistant-sidebar .student-analysis {
+        background: hsl(210 40% 98%) !important;
+        border: 1px solid hsl(214.3 31.8% 91.4%) !important;
+        border-radius: 8px !important;
+        padding: 16px !important;
+        margin-bottom: 16px !important;
+      }
+      
+      #minerva-assistant-sidebar .student-analysis h5 {
+        margin: 0 0 12px 0 !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        color: hsl(222.2 84% 4.9%) !important;
+      }
+      
+      #minerva-assistant-sidebar .score {
+        display: inline-block !important;
+        padding: 4px 12px !important;
+        border-radius: 6px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        margin-bottom: 12px !important;
+      }
+      
+      #minerva-assistant-sidebar .score-excellent {
+        background: hsl(142.1 76.2% 36.3% / 0.15) !important;
+        color: hsl(142.1 76.2% 36.3%) !important;
+        border: 1px solid hsl(142.1 76.2% 36.3% / 0.3) !important;
+      }
+      
+      #minerva-assistant-sidebar .score-good {
+        background: hsl(47.9 95.8% 53.1% / 0.15) !important;
+        color: hsl(45.4 93.4% 47.5%) !important;
+        border: 1px solid hsl(47.9 95.8% 53.1% / 0.3) !important;
+      }
+      
+      #minerva-assistant-sidebar .score-needs-work {
+        background: hsl(24.6 95% 53.1% / 0.15) !important;
+        color: hsl(20.5 90.2% 48.2%) !important;
+        border: 1px solid hsl(24.6 95% 53.1% / 0.3) !important;
+      }
+      
+      #minerva-assistant-sidebar .score-poor {
+        background: hsl(0 62.8% 30.6% / 0.15) !important;
+        color: hsl(0 62.8% 30.6%) !important;
+        border: 1px solid hsl(0 62.8% 30.6% / 0.3) !important;
+      }
+      
+      #minerva-assistant-sidebar .comments {
+        font-size: 13px !important;
+        line-height: 1.5 !important;
+        color: hsl(215.4 16.3% 46.9%) !important;
+      }
+      
+      #minerva-assistant-sidebar .comments strong {
+        color: hsl(222.2 84% 4.9%) !important;
+      }
     `;
     
     document.head.appendChild(styleElement);
@@ -948,7 +1011,12 @@ class MinervaContentScript {
       this.showNotification('Question context saved successfully!', 'success');
     } catch (error) {
       console.error('Error saving question context:', error);
-      this.showNotification('Error saving question context', 'error');
+      
+      if (error.message && error.message.includes('Extension context invalidated')) {
+        this.showNotification('Extension needs to be reloaded. Please refresh the page and try again.', 'error');
+      } else {
+        this.showNotification('Error saving question context. Please try again.', 'error');
+      }
     }
   }
 
@@ -1073,9 +1141,19 @@ class MinervaContentScript {
       }
     }
     
-    // Save rubric to local storage
-    await this.saveSettings({ rubric });
-    this.showNotification('Rubric saved successfully!');
+    try {
+      // Save rubric to local storage
+      await this.saveSettings({ rubric });
+      this.showNotification('Rubric saved successfully!', 'success');
+    } catch (error) {
+      console.error('Error saving rubric:', error);
+      
+      if (error.message && error.message.includes('Extension context invalidated')) {
+        this.showNotification('Extension needs to be reloaded. Please refresh the page and try again.', 'error');
+      } else {
+        this.showNotification('Error saving rubric. Please try again.', 'error');
+      }
+    }
   }
 
   async fetchGoogleSheetsData(url) {
@@ -1155,12 +1233,18 @@ class MinervaContentScript {
     let html = '<div class="analysis-results">';
     
     analyses.forEach(({ studentId, analysis }) => {
+      // Determine score color based on 1-5 scale
+      let scoreClass = '';
+      if (analysis.score >= 4) scoreClass = 'score-excellent';
+      else if (analysis.score === 3) scoreClass = 'score-good';
+      else if (analysis.score >= 2) scoreClass = 'score-needs-work';
+      else scoreClass = 'score-poor';
+      
       html += `
         <div class="student-analysis">
           <h5>Student ${studentId}</h5>
-          ${analysis.score !== null ? `<div class="score">Score: ${analysis.score}/100</div>` : ''}
-          <div class="comments"><strong>Comments:</strong> ${analysis.comments}</div>
-          <div class="suggestions"><strong>Suggestions:</strong> ${analysis.suggestions}</div>
+          ${analysis.score !== null ? `<div class="score ${scoreClass}">Score: ${analysis.score}/5</div>` : ''}
+          <div class="comments"><strong>Feedback:</strong> ${analysis.comments}</div>
         </div>
       `;
     });
@@ -1170,8 +1254,13 @@ class MinervaContentScript {
   }
 
   updateSidebar() {
-    // Update responses list
+    // Update responses list - check if element exists first
     const responsesList = document.getElementById('responses-list');
+    if (!responsesList) {
+      console.log('Responses list element not found - sidebar may not be loaded yet');
+      return;
+    }
+    
     if (this.pollData.size === 0) {
       responsesList.innerHTML = '<p>No responses detected yet...</p>';
     } else {
@@ -1234,15 +1323,52 @@ class MinervaContentScript {
     });
   }
 
-  async sendMessage(message) {
+  async checkBackgroundScript() {
+    try {
+      await this.sendMessage({ type: 'PING' }, 1);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async sendMessage(message, retries = 3) {
     return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage(message, (response) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(response);
+      const attemptSend = (attemptsLeft) => {
+        try {
+          chrome.runtime.sendMessage(message, (response) => {
+            if (chrome.runtime.lastError) {
+              console.log('Runtime error:', chrome.runtime.lastError.message);
+              
+              // If extension context is invalidated, try to reload the page or retry
+              if (chrome.runtime.lastError.message.includes('Extension context invalidated')) {
+                if (attemptsLeft > 0) {
+                  console.log(`Extension context invalidated, retrying... ${attemptsLeft} attempts left`);
+                  setTimeout(() => attemptSend(attemptsLeft - 1), 200);
+                  return;
+                } else {
+                  // If all retries failed, suggest page refresh
+                  reject(new Error('Extension context invalidated. Please refresh the page to reconnect.'));
+                  return;
+                }
+              }
+              
+              reject(chrome.runtime.lastError);
+            } else {
+              resolve(response);
+            }
+          });
+        } catch (error) {
+          if (attemptsLeft > 0) {
+            console.log(`Send attempt failed, retrying... ${attemptsLeft} attempts left`);
+            setTimeout(() => attemptSend(attemptsLeft - 1), 200);
+          } else {
+            reject(error);
+          }
         }
-      });
+      };
+      
+      attemptSend(retries);
     });
   }
 

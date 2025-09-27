@@ -69,11 +69,14 @@ class MinervaForumAssistant {
   }
 
   setupEventListeners() {
-    // Listen for web requests to intercept API calls
+    // Listen for web requests to intercept API calls - very specific to avoid conflicts
     chrome.webRequest.onBeforeRequest.addListener(
       (details) => this.handleApiRequest(details),
       {
-        urls: ["https://forum.minerva.edu/api/*"],
+        urls: [
+          "https://forum.minerva.edu/api/*",
+          "https://forum.minerva.edu/app/api/*"
+        ],
         types: ["xmlhttprequest"]
       },
       ["requestBody"]
@@ -83,7 +86,10 @@ class MinervaForumAssistant {
     chrome.webRequest.onCompleted.addListener(
       (details) => this.handleApiResponse(details),
       {
-        urls: ["https://forum.minerva.edu/api/*"],
+        urls: [
+          "https://forum.minerva.edu/api/*", 
+          "https://forum.minerva.edu/app/api/*"
+        ],
         types: ["xmlhttprequest"]
       },
       ["responseHeaders"]
@@ -133,6 +139,10 @@ class MinervaForumAssistant {
 
   async handleMessage(request, sender, sendResponse) {
     switch (request.type) {
+      case 'PING':
+        sendResponse({ success: true });
+        break;
+        
       case 'GET_API_DATA':
         sendResponse({ data: Array.from(this.apiData.values()) });
         break;
@@ -175,29 +185,25 @@ class MinervaForumAssistant {
           messages: [
             {
               role: 'system',
-              content: `You are an AI assistant helping to grade student responses based on a rubric. 
+              content: `You are an AI grading assistant. Given the question and the model answer, the student response and the rubric please grade on the scale of 1-5 and provide feedback.
 
-              ${data.questionText ? `Question/Prompt: ${data.questionText}` : ''}
-              
-              ${data.expectedAnswer ? `Expected Answer/Key Points: ${data.expectedAnswer}` : ''}
-              
+              Here are the information:
+              Question: ${data.questionText || 'Not provided'}
+              Model Answer: ${data.expectedAnswer || 'Not provided'}
+              Student response: ${data.studentResponse}
               Rubric: ${data.rubric}
-              
-              Please analyze the student response and provide:
-              1. A numerical score (0-100)
-              2. Detailed comments explaining the score
-              3. Specific suggestions for improvement
-              
-              Consider the question context and expected answer when evaluating the response.
-              Format your response as JSON with keys: score, comments, suggestions`
+
+              Don't use 5 generously and only use it for answers that are mindblowing. I expect most grades to be in the 2-3 range with exceptional 4's. If the grade is 4-5 give a positive encouragement one-liner. If the score is 3, provide a short explanation that acknowledges the student's answer was good but was missing a point and mention the point. If the student's grade is 2-3, provide feedback on what they got wrong and what the correct answer is. In all cases, make sure your feedback is 1-3 sentences (so it should be very concise) unless you need to explain in more detail why they got the answer wrong.
+
+              Format your response as JSON with keys: score (1-5), comments (your concise feedback)`
             },
             {
               role: 'user',
-              content: `Student Response: ${data.studentResponse}`
+              content: `Please grade this student response according to the instructions above.`
             }
           ],
           temperature: 0.3,
-          max_tokens: 1000
+          max_tokens: 500
         })
       });
 
@@ -214,8 +220,7 @@ class MinervaForumAssistant {
         // If JSON parsing fails, return structured response
         return {
           score: null,
-          comments: content,
-          suggestions: 'Please review the analysis above for detailed feedback.'
+          comments: content
         };
       }
     } catch (error) {
@@ -223,8 +228,7 @@ class MinervaForumAssistant {
       return {
         error: error.message,
         score: null,
-        comments: 'Analysis failed. Please check your API key and try again.',
-        suggestions: ''
+        comments: 'Analysis failed. Please check your API key and try again.'
       };
     }
   }
