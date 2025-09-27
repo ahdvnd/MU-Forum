@@ -6,7 +6,7 @@ class MinervaContentScript {
     this.pollData = new Map();
     this.currentPage = this.determinePageType(); // Determine page based on URL
     this.setupInterception();
-    this.createSidebar();
+    // Don't create sidebar automatically - only when user requests it
     this.setupMessageListener();
     this.setupTextSelection();
   }
@@ -235,6 +235,13 @@ class MinervaContentScript {
     });
   }
 
+  ensureSidebarExists() {
+    // Only create sidebar if it doesn't exist
+    if (!this.sidebar) {
+      this.createSidebar();
+    }
+  }
+
   createSidebar() {
     // Create sidebar container
     this.sidebar = document.createElement('div');
@@ -244,11 +251,46 @@ class MinervaContentScript {
     // Inject our CSS only when sidebar is created
     this.injectExtensionCSS();
     
+    // Modify page layout to make room for sidebar
+    this.adjustPageLayout();
+    
     // Add sidebar to page
     document.body.appendChild(this.sidebar);
     
     // Load the current page content
     this.loadSidebarPage(this.currentPage);
+  }
+
+  adjustPageLayout() {
+    // Find the main content container and adjust its layout
+    const mainContent = document.querySelector('main') || 
+                       document.querySelector('.main-content') || 
+                       document.querySelector('#main') ||
+                       document.querySelector('[role="main"]') ||
+                       document.body;
+    
+    if (mainContent && mainContent !== document.body) {
+      // Add class to indicate sidebar is present
+      mainContent.classList.add('minerva-sidebar-active');
+    } else {
+      // If we can't find a specific main content, adjust body
+      document.body.classList.add('minerva-sidebar-active');
+    }
+  }
+
+  removeSidebarLayout() {
+    // Remove layout adjustments when sidebar is closed
+    const mainContent = document.querySelector('main') || 
+                       document.querySelector('.main-content') || 
+                       document.querySelector('#main') ||
+                       document.querySelector('[role="main"]') ||
+                       document.body;
+    
+    if (mainContent && mainContent !== document.body) {
+      mainContent.classList.remove('minerva-sidebar-active');
+    } else {
+      document.body.classList.remove('minerva-sidebar-active');
+    }
   }
 
   injectExtensionCSS() {
@@ -263,7 +305,7 @@ class MinervaContentScript {
     
     // Restore the beautiful shadCN styling but with complete isolation
     styleElement.textContent = `
-      /* MINERVA EXTENSION - RESTORED SHADCN STYLING - ISOLATED */
+      /* MINERVA EXTENSION - EMBEDDED SIDEBAR STYLING */
       #minerva-assistant-sidebar {
         all: initial !important;
         position: fixed !important;
@@ -279,7 +321,7 @@ class MinervaContentScript {
         font-size: 14px !important;
         line-height: 1.5 !important;
         transform: translateX(100%) !important;
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         overflow-y: auto !important;
         box-sizing: border-box !important;
         display: block !important;
@@ -287,6 +329,31 @@ class MinervaContentScript {
       
       #minerva-assistant-sidebar:not(.collapsed) {
         transform: translateX(0) !important;
+      }
+      
+      /* Adjust page layout when sidebar is active */
+      body.minerva-sidebar-active {
+        transition: padding-right 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      }
+      
+      /* When sidebar is open, add padding to body to make room */
+      body.minerva-sidebar-active:has(#minerva-assistant-sidebar:not(.collapsed)),
+      body:has(#minerva-assistant-sidebar:not(.collapsed)).minerva-sidebar-active {
+        padding-right: 380px !important;
+      }
+      
+      /* Alternative approach for main content containers */
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) main,
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) .main-content,
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) #main,
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) [role="main"] {
+        margin-right: 380px !important;
+        transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      }
+      
+      /* Ensure content doesn't get cut off */
+      body.minerva-sidebar-active * {
+        max-width: calc(100vw - 380px) !important;
       }
       
       #minerva-assistant-sidebar * {
@@ -323,7 +390,8 @@ class MinervaContentScript {
         gap: 8px !important;
       }
       
-      #minerva-assistant-sidebar .close-btn {
+      #minerva-assistant-sidebar .close-btn,
+      #minerva-assistant-sidebar .minimize-btn {
         background: none !important;
         border: none !important;
         color: hsl(215.4 16.3% 46.9%) !important;
@@ -339,16 +407,24 @@ class MinervaContentScript {
         line-height: 1 !important;
         user-select: none !important;
         transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        margin-left: 4px !important;
       }
       
-      #minerva-assistant-sidebar .close-btn:hover {
+      #minerva-assistant-sidebar .close-btn:hover,
+      #minerva-assistant-sidebar .minimize-btn:hover {
         background-color: hsl(210 40% 98%) !important;
         color: hsl(222.2 84% 4.9%) !important;
       }
       
-      #minerva-assistant-sidebar .close-btn:active {
+      #minerva-assistant-sidebar .close-btn:active,
+      #minerva-assistant-sidebar .minimize-btn:active {
         background-color: hsl(210 40% 96%) !important;
         transform: scale(0.98) !important;
+      }
+      
+      #minerva-assistant-sidebar .minimize-btn {
+        font-size: 20px !important;
+        font-weight: bold !important;
       }
       
       #minerva-assistant-sidebar .sidebar-content {
@@ -964,6 +1040,7 @@ class MinervaContentScript {
       <div class="sidebar-header">
         <h3>Minerva Assistant</h3>
         <div class="header-controls">
+          <button id="minimize-sidebar" class="minimize-btn" title="Minimize Sidebar">−</button>
           <button id="close-sidebar" class="close-btn" title="Close Sidebar">×</button>
         </div>
       </div>
@@ -1089,33 +1166,78 @@ class MinervaContentScript {
   }
 
   ensureCloseButtonWorks() {
-    // Double-check that close button exists and is functional
+    // Double-check that close and minimize buttons exist and are functional
     const closeBtn = document.getElementById('close-sidebar');
-    if (!closeBtn) {
-      console.error('Close button not found! Adding manually...');
+    const minimizeBtn = document.getElementById('minimize-sidebar');
+    
+    if (!closeBtn || !minimizeBtn) {
+      console.error('Control buttons not found! Adding manually...');
       const header = this.sidebar.querySelector('.sidebar-header');
       const controls = header.querySelector('.header-controls');
       if (controls) {
-        controls.innerHTML = '<button id="close-sidebar" class="close-btn" title="Close Sidebar">×</button>';
-        // Re-add event listener
+        controls.innerHTML = `
+          <button id="minimize-sidebar" class="minimize-btn" title="Minimize Sidebar">−</button>
+          <button id="close-sidebar" class="close-btn" title="Close Sidebar">×</button>
+        `;
+        
+        // Re-add event listeners
         document.getElementById('close-sidebar').addEventListener('click', () => {
           this.closeSidebar();
+        });
+        
+        document.getElementById('minimize-sidebar').addEventListener('click', () => {
+          this.minimizeSidebar();
         });
       }
     }
   }
 
   closeSidebar() {
+    if (!this.sidebar) return;
+    
     this.sidebar.classList.add('collapsed');
-    console.log('Sidebar closed');
-    // Optional: Show a brief notification
-    // this.showNotification('Sidebar closed', 'success');
+    
+    // Restore page layout and remove sidebar completely
+    setTimeout(() => {
+      this.removeSidebarLayout();
+      if (this.sidebar) {
+        this.sidebar.remove();
+        this.sidebar = null;
+      }
+    }, 300); // Wait for transition to complete
+    
+    console.log('Sidebar closed and removed');
+    this.showNotification('Sidebar closed - website restored to normal', 'success');
+  }
+
+  minimizeSidebar() {
+    if (!this.sidebar) return;
+    
+    // Same as closing but with different notification
+    this.sidebar.classList.add('collapsed');
+    
+    // Restore page layout and remove sidebar completely
+    setTimeout(() => {
+      this.removeSidebarLayout();
+      if (this.sidebar) {
+        this.sidebar.remove();
+        this.sidebar = null;
+      }
+    }, 300); // Wait for transition to complete
+    
+    console.log('Sidebar minimized and removed');
+    this.showNotification('Sidebar minimized - website back to normal view', 'success');
   }
 
   setupSidebarEvents() {
     // Close sidebar (header button) - always present
     document.getElementById('close-sidebar').addEventListener('click', () => {
       this.closeSidebar();
+    });
+
+    // Minimize sidebar (header button) - always present
+    document.getElementById('minimize-sidebar').addEventListener('click', () => {
+      this.minimizeSidebar();
     });
     
     // Close sidebar (bottom button) - always present
@@ -1660,6 +1782,12 @@ class MinervaContentScript {
   }
 
   updateSidebar() {
+    // Don't update if sidebar doesn't exist yet
+    if (!this.sidebar) {
+      console.log('Sidebar not created yet - skipping update');
+      return;
+    }
+    
     // Update responses list - check if element exists first
     const responsesList = document.getElementById('responses-list');
     if (!responsesList) {
@@ -1707,17 +1835,21 @@ class MinervaContentScript {
           });
           break;
          case 'SHOW_SIDEBAR':
+           this.ensureSidebarExists();
            this.sidebar.classList.remove('collapsed');
            break;
          case 'SHOW_GRADER':
+           this.ensureSidebarExists();
            this.loadSidebarPage('grader');
            this.sidebar.classList.remove('collapsed');
            break;
          case 'SHOW_UNAVAILABLE':
+           this.ensureSidebarExists();
            this.loadSidebarPage('unavailable');
            this.sidebar.classList.remove('collapsed');
            break;
          case 'SHOW_ANALYTICS':
+           this.ensureSidebarExists();
            this.loadSidebarPage('analytics', request.classId);
            this.sidebar.classList.remove('collapsed');
            break;
