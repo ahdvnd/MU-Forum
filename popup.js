@@ -35,15 +35,10 @@ class MinervaPopup {
       document.getElementById('api-key-status').textContent = hasApiKey ? 'Configured' : 'Not Set';
       document.getElementById('api-key-status').className = `status-value ${hasApiKey ? 'success' : 'error'}`;
 
-      // Update rubric status
-      const hasRubric = settings.rubric && settings.rubric.length > 0;
-      document.getElementById('rubric-status').textContent = hasRubric ? 'Set' : 'Not Set';
-      document.getElementById('rubric-status').className = `status-value ${hasRubric ? 'success' : 'warning'}`;
-
       // Content script communication removed - stats section removed
 
       // Show warnings/messages
-      this.showMessages(isMinervaForum, hasApiKey, hasRubric);
+      this.showMessages(isMinervaForum, hasApiKey);
 
     } catch (error) {
       console.error('Error loading status:', error);
@@ -111,7 +106,7 @@ class MinervaPopup {
     }
   }
 
-  showMessages(isMinervaForum, hasApiKey, hasRubric) {
+  showMessages(isMinervaForum, hasApiKey) {
     const warningContainer = document.getElementById('warning-container');
     const successContainer = document.getElementById('success-container');
     
@@ -130,18 +125,9 @@ class MinervaPopup {
           Please configure your OpenAI API key to enable AI-powered grading assistance.
         </div>
       `;
-    } else if (!hasRubric) {
-      warningContainer.innerHTML = `
-        <div class="warning-message">
-          Please set up a rubric in the sidebar to start analyzing student responses.
-        </div>
-      `;
     } else {
-      successContainer.innerHTML = `
-        <div class="success-message">
-          Extension is ready! Click "Show Sidebar" to start grading with AI assistance.
-        </div>
-      `;
+      // Extension is ready but don't show success message
+      successContainer.innerHTML = '';
     }
   }
 

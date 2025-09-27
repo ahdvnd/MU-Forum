@@ -390,8 +390,7 @@ class MinervaContentScript {
         gap: 8px !important;
       }
       
-      #minerva-assistant-sidebar .close-btn,
-      #minerva-assistant-sidebar .minimize-btn {
+      #minerva-assistant-sidebar .close-btn {
         background: none !important;
         border: none !important;
         color: hsl(215.4 16.3% 46.9%) !important;
@@ -407,24 +406,16 @@ class MinervaContentScript {
         line-height: 1 !important;
         user-select: none !important;
         transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        margin-left: 4px !important;
       }
       
-      #minerva-assistant-sidebar .close-btn:hover,
-      #minerva-assistant-sidebar .minimize-btn:hover {
+      #minerva-assistant-sidebar .close-btn:hover {
         background-color: hsl(210 40% 98%) !important;
         color: hsl(222.2 84% 4.9%) !important;
       }
       
-      #minerva-assistant-sidebar .close-btn:active,
-      #minerva-assistant-sidebar .minimize-btn:active {
+      #minerva-assistant-sidebar .close-btn:active {
         background-color: hsl(210 40% 96%) !important;
         transform: scale(0.98) !important;
-      }
-      
-      #minerva-assistant-sidebar .minimize-btn {
-        font-size: 20px !important;
-        font-weight: bold !important;
       }
       
       #minerva-assistant-sidebar .sidebar-content {
@@ -1040,7 +1031,6 @@ class MinervaContentScript {
       <div class="sidebar-header">
         <h3>Minerva Assistant</h3>
         <div class="header-controls">
-          <button id="minimize-sidebar" class="minimize-btn" title="Minimize Sidebar">−</button>
           <button id="close-sidebar" class="close-btn" title="Close Sidebar">×</button>
         </div>
       </div>
@@ -1166,27 +1156,21 @@ class MinervaContentScript {
   }
 
   ensureCloseButtonWorks() {
-    // Double-check that close and minimize buttons exist and are functional
+    // Double-check that close button exists and is functional
     const closeBtn = document.getElementById('close-sidebar');
-    const minimizeBtn = document.getElementById('minimize-sidebar');
     
-    if (!closeBtn || !minimizeBtn) {
-      console.error('Control buttons not found! Adding manually...');
+    if (!closeBtn) {
+      console.error('Close button not found! Adding manually...');
       const header = this.sidebar.querySelector('.sidebar-header');
       const controls = header.querySelector('.header-controls');
       if (controls) {
         controls.innerHTML = `
-          <button id="minimize-sidebar" class="minimize-btn" title="Minimize Sidebar">−</button>
           <button id="close-sidebar" class="close-btn" title="Close Sidebar">×</button>
         `;
         
-        // Re-add event listeners
+        // Re-add event listener
         document.getElementById('close-sidebar').addEventListener('click', () => {
           this.closeSidebar();
-        });
-        
-        document.getElementById('minimize-sidebar').addEventListener('click', () => {
-          this.minimizeSidebar();
         });
       }
     }
@@ -1207,37 +1191,13 @@ class MinervaContentScript {
     }, 300); // Wait for transition to complete
     
     console.log('Sidebar closed and removed');
-    this.showNotification('Sidebar closed - website restored to normal', 'success');
   }
 
-  minimizeSidebar() {
-    if (!this.sidebar) return;
-    
-    // Same as closing but with different notification
-    this.sidebar.classList.add('collapsed');
-    
-    // Restore page layout and remove sidebar completely
-    setTimeout(() => {
-      this.removeSidebarLayout();
-      if (this.sidebar) {
-        this.sidebar.remove();
-        this.sidebar = null;
-      }
-    }, 300); // Wait for transition to complete
-    
-    console.log('Sidebar minimized and removed');
-    this.showNotification('Sidebar minimized - website back to normal view', 'success');
-  }
 
   setupSidebarEvents() {
     // Close sidebar (header button) - always present
     document.getElementById('close-sidebar').addEventListener('click', () => {
       this.closeSidebar();
-    });
-
-    // Minimize sidebar (header button) - always present
-    document.getElementById('minimize-sidebar').addEventListener('click', () => {
-      this.minimizeSidebar();
     });
     
     // Close sidebar (bottom button) - always present
