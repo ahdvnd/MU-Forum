@@ -305,6 +305,16 @@ class MinervaContentScript {
     
     // Restore the beautiful shadCN styling but with complete isolation
     styleElement.textContent = `
+      /* MINERVA EXTENSION - COLOR VARIABLES */
+      :root {
+        --minerva-gray: #676767;
+        --minerva-red: #DF2E25;
+        --minerva-orange: #F0871D;
+        --minerva-green: #33AB6F;
+        --minerva-blue: #0978BE;
+        --minerva-purple: #5B3E97;
+      }
+      
       /* MINERVA EXTENSION - EMBEDDED SIDEBAR STYLING */
       #minerva-assistant-sidebar {
         all: initial !important;
@@ -1008,6 +1018,79 @@ class MinervaContentScript {
         color: hsl(0 62.8% 30.6%) !important;
       }
       
+      #minerva-assistant-sidebar .metric-value.decile {
+        font-size: 11px !important;
+        background: hsl(210 40% 96%) !important;
+        padding: 2px 6px !important;
+        border-radius: 4px !important;
+        color: hsl(215.4 16.3% 46.9%) !important;
+        font-weight: 500 !important;
+      }
+      
+      /* Percentile Color Coding */
+      #minerva-assistant-sidebar .metric-value.percentile-red {
+        color: var(--minerva-red) !important;
+        font-weight: 600 !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-value.percentile-orange {
+        color: var(--minerva-orange) !important;
+        font-weight: 600 !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-value.percentile-green {
+        color: var(--minerva-green) !important;
+        font-weight: 600 !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-value.percentile-blue {
+        color: var(--minerva-blue) !important;
+        font-weight: 600 !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-value.percentile-purple {
+        color: var(--minerva-purple) !important;
+        font-weight: 600 !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-value.percentile-gray {
+        color: var(--minerva-gray) !important;
+        font-weight: 600 !important;
+      }
+      
+      /* Suggested Score Color Coding (1-5 scale) */
+      #minerva-assistant-sidebar .metric-value.score-1-red {
+        color: var(--minerva-red) !important;
+        font-weight: 600 !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-value.score-2-orange {
+        color: var(--minerva-orange) !important;
+        font-weight: 600 !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-value.score-3-green {
+        color: var(--minerva-green) !important;
+        font-weight: 600 !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-value.score-4-blue {
+        color: var(--minerva-blue) !important;
+        font-weight: 600 !important;
+      }
+      
+      #minerva-assistant-sidebar .metric-value.score-5-purple {
+        color: var(--minerva-purple) !important;
+        font-weight: 600 !important;
+      }
+      
+      /* Style the suggested score row differently */
+      #minerva-assistant-sidebar .suggested-score-row {
+        border-top: 1px solid hsl(214.3 31.8% 91.4%) !important;
+        padding-top: 8px !important;
+        margin-top: 8px !important;
+      }
+      
       #minerva-assistant-sidebar .error-text {
         color: hsl(0 62.8% 30.6%) !important;
         font-style: italic !important;
@@ -1393,8 +1476,6 @@ class MinervaContentScript {
     const instructorTalkTime = data['instructor-talk-time-summary'] || data.instructorTalkTimesSummary;
     const studentTalkTime = data['student-talk-time-summary'] || data.studentTalkTimeSummary;
     const attendance = data['attendance-summary'] || data.attendanceSummary;
-    const breakouts = data['breakout-summary'] || data.breakoutSummary;
-    const polls = data['polls-summary'] || data.pollsSummary;
 
     classSummary.innerHTML = `
       <div class="analytics-summary">
@@ -1416,18 +1497,6 @@ class MinervaContentScript {
             <div class="summary-value">${(attendance?.['total-class-users'] || attendance?.totalClassUsers || 0) - (attendance?.['total-absences'] || attendance?.totalAbsences || 0)}/${attendance?.['total-class-users'] || attendance?.totalClassUsers || 0}</div>
             <div class="summary-detail">${attendance?.['total-absences'] || attendance?.totalAbsences || 0} absent</div>
           </div>
-          
-          <div class="summary-item">
-            <div class="summary-label">Breakouts</div>
-            <div class="summary-value">${breakouts?.['num-breakouts'] || breakouts?.numBreakouts || 0}</div>
-            <div class="summary-detail">${Math.round((breakouts?.['breakout-duration-in-seconds'] || breakouts?.breakoutDurationInSeconds || 0) / 60)} min total</div>
-          </div>
-          
-          <div class="summary-item">
-            <div class="summary-label">Polls</div>
-            <div class="summary-value">${polls?.['polls-count'] || polls?.pollsCount || 0}</div>
-            <div class="summary-detail">Class ${polls?.['class-count'] || polls?.classCount || 0}</div>
-          </div>
         </div>
       </div>
     `;
@@ -1442,11 +1511,16 @@ class MinervaContentScript {
       return;
     }
 
-    // Sort students by engagement score (calculated from multiple metrics)
+    // Calculate decile rankings for talk time, breakout time, and hand raises
+    const talkTimeDeciles = this.calculateDeciles(students, 'talk-time');
+    const breakoutDeciles = this.calculateDeciles(students, 'breakout-talk-time');
+    const handRaiseDeciles = this.calculateDeciles(students, 'hand-raises');
+
+    // Sort students alphabetically by first name
     const sortedStudents = students.sort((a, b) => {
-      const scoreA = this.calculateEngagementScore(a);
-      const scoreB = this.calculateEngagementScore(b);
-      return scoreB - scoreA;
+      const nameA = (a.user?.['first-name'] || a.user?.firstName || 'Unknown').toLowerCase();
+      const nameB = (b.user?.['first-name'] || b.user?.firstName || 'Unknown').toLowerCase();
+      return nameA.localeCompare(nameB);
     });
 
     let html = '<div class="student-cards">';
@@ -1456,6 +1530,22 @@ class MinervaContentScript {
       const talkTime = student['talk-time'] || student.talkTime || {};
       const breakoutTalkTime = student['breakout-talk-time'] || student.breakoutTalkTime || {};
       
+      const talkSeconds = talkTime['duration-seconds'] || talkTime.durationSeconds || 0;
+      const breakoutSeconds = breakoutTalkTime['duration-seconds'] || breakoutTalkTime.durationSeconds || 0;
+      
+      const talkDecile = talkTimeDeciles[student.user?.id] || 'N/A';
+      const breakoutDecile = breakoutDeciles[student.user?.id] || 'N/A';
+      const handRaiseDecile = handRaiseDeciles[student.user?.id] || 'N/A';
+      
+      // Get color classes based on percentile ranges
+      const talkColorClass = this.getPercentileColorClass(talkDecile);
+      const breakoutColorClass = this.getPercentileColorClass(breakoutDecile);
+      const handRaiseColorClass = this.getPercentileColorClass(handRaiseDecile);
+      
+      // Calculate suggested score from average of all percentiles
+      const suggestedScore = this.calculateSuggestedScore(student, talkDecile, breakoutDecile, handRaiseDecile);
+      const scoreColorClass = this.getScoreColorClass(suggestedScore);
+      
       html += `
         <div class="student-card">
           <div class="student-header">
@@ -1464,13 +1554,13 @@ class MinervaContentScript {
           
           <div class="student-metrics">
             <div class="metric-row">
-              <span class="metric-label">Talk Time:</span>
-              <span class="metric-value ${talkTime.status?.toLowerCase()}">${talkTime['duration-seconds'] || talkTime.durationSeconds || 0}s (${talkTime.status || 'UNKNOWN'})</span>
+              <span class="metric-label">Talk Time (percentile):</span>
+              <span class="metric-value ${talkColorClass}">${talkSeconds}s (${talkDecile})</span>
             </div>
             
             <div class="metric-row">
-              <span class="metric-label">Breakout Talk:</span>
-              <span class="metric-value ${breakoutTalkTime.status?.toLowerCase()}">${breakoutTalkTime['duration-seconds'] || breakoutTalkTime.durationSeconds || 0}s (${breakoutTalkTime.status || 'UNKNOWN'})</span>
+              <span class="metric-label">Breakout Talk (percentile):</span>
+              <span class="metric-value ${breakoutColorClass}">${breakoutSeconds}s (${breakoutDecile})</span>
             </div>
             
             <div class="metric-row">
@@ -1479,8 +1569,13 @@ class MinervaContentScript {
             </div>
             
             <div class="metric-row">
-              <span class="metric-label">Hand Raises:</span>
-              <span class="metric-value">${student['hand-raises'] || student.handRaises || 0}</span>
+              <span class="metric-label">Hand Raises (percentile):</span>
+              <span class="metric-value ${handRaiseColorClass}">${student['hand-raises'] || student.handRaises || 0} (${handRaiseDecile})</span>
+            </div>
+            
+            <div class="metric-row suggested-score-row">
+              <span class="metric-label">Average score:</span>
+              <span class="metric-value ${scoreColorClass}">${suggestedScore}</span>
             </div>
           </div>
         </div>
@@ -1489,6 +1584,54 @@ class MinervaContentScript {
     
     html += '</div>';
     studentAnalytics.innerHTML = html;
+  }
+
+  calculateDeciles(students, metricType) {
+    // Extract values for all students based on metric type
+    const values = students.map(student => {
+      let value = 0;
+      
+      if (metricType === 'hand-raises') {
+        value = student['hand-raises'] || student.handRaises || 0;
+      } else {
+        // For talk-time and breakout-talk-time
+        const timeData = student[metricType] || student[metricType.replace('-', '')] || {};
+        value = timeData['duration-seconds'] || timeData.durationSeconds || 0;
+      }
+      
+      return {
+        id: student.user?.id,
+        value: value
+      };
+    }).filter(item => item.id); // Only include students with valid IDs
+
+    // Sort by values (ascending)
+    values.sort((a, b) => a.value - b.value);
+
+    // Calculate decile boundaries
+    const decileMap = {};
+    const totalStudents = values.length;
+
+    values.forEach((item, index) => {
+      // Calculate which decile this student is in (1-10)
+      const percentile = (index + 1) / totalStudents;
+      let decile;
+      
+      if (percentile <= 0.1) decile = '0-10%';
+      else if (percentile <= 0.2) decile = '10-20%';
+      else if (percentile <= 0.3) decile = '20-30%';
+      else if (percentile <= 0.4) decile = '30-40%';
+      else if (percentile <= 0.5) decile = '40-50%';
+      else if (percentile <= 0.6) decile = '50-60%';
+      else if (percentile <= 0.7) decile = '60-70%';
+      else if (percentile <= 0.8) decile = '70-80%';
+      else if (percentile <= 0.9) decile = '80-90%';
+      else decile = '90-100%';
+
+      decileMap[item.id] = decile;
+    });
+
+    return decileMap;
   }
 
   calculateEngagementScore(student) {
@@ -1539,6 +1682,67 @@ class MinervaContentScript {
     if (score >= 60) return 'good';
     if (score >= 40) return 'needs-work';
     return 'poor';
+  }
+
+  getPercentileColorClass(percentileRange) {
+    // Extract the lower bound of the percentile range
+    if (percentileRange === 'N/A') return 'percentile-gray';
+    
+    const match = percentileRange.match(/^(\d+)-/);
+    if (!match) return 'percentile-gray';
+    
+    const lowerBound = parseInt(match[1]);
+    
+    if (lowerBound >= 90) return 'percentile-purple';  // 90-100%
+    if (lowerBound >= 70) return 'percentile-blue';    // 70-90%
+    if (lowerBound >= 50) return 'percentile-green';   // 50-70%
+    if (lowerBound >= 20) return 'percentile-orange';  // 20-50%
+    return 'percentile-red';                           // 0-20%
+  }
+
+  calculateSuggestedScore(student, talkDecile, breakoutDecile, handRaiseDecile) {
+    // Convert percentile ranges to numeric values for averaging
+    const talkPercentile = this.extractPercentileValue(talkDecile);
+    const breakoutPercentile = this.extractPercentileValue(breakoutDecile);
+    const handRaisePercentile = this.extractPercentileValue(handRaiseDecile);
+    const focusPercentile = student['window-focus-percentage'] || student.windowFocusPercentage || 0;
+    
+    // Calculate average across all four categories
+    const validPercentiles = [talkPercentile, breakoutPercentile, handRaisePercentile, focusPercentile].filter(p => p !== null);
+    
+    if (validPercentiles.length === 0) return 1;
+    
+    const averagePercentile = validPercentiles.reduce((sum, p) => sum + p, 0) / validPercentiles.length;
+    
+    // Convert average percentile to 1-5 score
+    if (averagePercentile >= 90) return 5;
+    if (averagePercentile >= 70) return 4;
+    if (averagePercentile >= 50) return 3;
+    if (averagePercentile >= 20) return 2;
+    return 1;
+  }
+
+  extractPercentileValue(percentileRange) {
+    // Extract the midpoint of the percentile range for averaging
+    if (percentileRange === 'N/A') return null;
+    
+    const match = percentileRange.match(/^(\d+)-(\d+)%/);
+    if (!match) return null;
+    
+    const lowerBound = parseInt(match[1]);
+    const upperBound = parseInt(match[2]);
+    return (lowerBound + upperBound) / 2;
+  }
+
+  getScoreColorClass(score) {
+    switch(score) {
+      case 1: return 'score-1-red';
+      case 2: return 'score-2-orange';
+      case 3: return 'score-3-green';
+      case 4: return 'score-4-blue';
+      case 5: return 'score-5-purple';
+      default: return 'percentile-gray';
+    }
   }
 
   openSettingsModal() {
