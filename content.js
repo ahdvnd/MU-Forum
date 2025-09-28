@@ -1091,6 +1091,34 @@ class MinervaContentScript {
         margin-top: 8px !important;
       }
       
+      /* Copy feedback button in header */
+      #minerva-assistant-sidebar .copy-feedback-btn {
+        background: none !important;
+        border: none !important;
+        color: hsl(215.4 16.3% 46.9%) !important;
+        font-size: 16px !important;
+        cursor: pointer !important;
+        padding: 4px !important;
+        width: 28px !important;
+        height: 28px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 4px !important;
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        user-select: none !important;
+      }
+      
+      #minerva-assistant-sidebar .copy-feedback-btn:hover {
+        background: hsl(210 40% 96%) !important;
+        color: hsl(222.2 84% 4.9%) !important;
+      }
+      
+      #minerva-assistant-sidebar .copy-feedback-btn:active {
+        transform: scale(0.95) !important;
+        background: hsl(210 40% 94%) !important;
+      }
+      
       #minerva-assistant-sidebar .error-text {
         color: hsl(0 62.8% 30.6%) !important;
         font-style: italic !important;
@@ -1362,6 +1390,16 @@ class MinervaContentScript {
         }
       });
     }
+    
+    // Use event delegation for copy feedback buttons (since they're dynamically created)
+    const studentAnalytics = document.getElementById('student-analytics');
+    if (studentAnalytics) {
+      studentAnalytics.addEventListener('click', (e) => {
+        if (e.target.classList.contains('copy-feedback-btn')) {
+          this.copyStudentFeedback(e.target);
+        }
+      });
+    }
   }
 
   clearAllResponses() {
@@ -1550,6 +1588,9 @@ class MinervaContentScript {
         <div class="student-card">
           <div class="student-header">
             <div class="student-name">${student.user?.['first-name'] || student.user?.firstName || 'Unknown'} ${student.user?.['last-name'] || student.user?.lastName || ''}</div>
+            <button class="copy-feedback-btn" data-student-id="${student.user?.id}" data-student-name="${student.user?.['first-name'] || student.user?.firstName || 'Unknown'} ${student.user?.['last-name'] || student.user?.lastName || ''}" data-talk-time="${talkSeconds}" data-talk-percentile="${talkDecile}" data-breakout-time="${breakoutSeconds}" data-breakout-percentile="${breakoutDecile}" data-hand-raises="${student['hand-raises'] || student.handRaises || 0}" data-hand-raise-percentile="${handRaiseDecile}" title="Copy feedback for ${student.user?.['first-name'] || student.user?.firstName || 'Unknown'}">
+              📋
+            </button>
           </div>
           
           <div class="student-metrics">
@@ -1584,6 +1625,21 @@ class MinervaContentScript {
     
     html += '</div>';
     studentAnalytics.innerHTML = html;
+    
+    // Re-setup event listeners for the newly created buttons
+    this.setupCopyButtonListeners();
+  }
+
+  setupCopyButtonListeners() {
+    // Add event listeners to all copy feedback buttons
+    document.querySelectorAll('.copy-feedback-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Copy button clicked!');
+        this.copyStudentFeedback(e.target);
+      });
+    });
   }
 
   calculateDeciles(students, metricType) {
@@ -1743,6 +1799,39 @@ class MinervaContentScript {
       case 5: return 'score-5-purple';
       default: return 'percentile-gray';
     }
+  }
+
+  copyStudentFeedback(button) {
+    // Get student data from button attributes
+    const studentName = button.getAttribute('data-student-name');
+    const talkTime = button.getAttribute('data-talk-time');
+    const talkPercentile = button.getAttribute('data-talk-percentile');
+    const breakoutTime = button.getAttribute('data-breakout-time');
+    const breakoutPercentile = button.getAttribute('data-breakout-percentile');
+    const handRaises = button.getAttribute('data-hand-raises');
+    const handRaisePercentile = button.getAttribute('data-hand-raise-percentile');
+    
+    // Debug logging
+    console.log('Copy button data:', {
+      studentName, talkTime, talkPercentile, breakoutTime, breakoutPercentile, handRaises, handRaisePercentile
+    });
+    
+    // Create the feedback message
+    const feedbackText = `Thanks for your class participation. We listened to the comments you made in the class and used the following metrics to calculate your class engagement.
+
+Talk Time: ${talkTime || 'N/A'}s (${talkPercentile || 'N/A'} percentile)
+Breakout Talk Time: ${breakoutTime || 'N/A'}s (${breakoutPercentile || 'N/A'} percentile)  
+Hand Raises: ${handRaises || 'N/A'} (${handRaisePercentile || 'N/A'} percentile)`;
+
+    console.log('Feedback text to copy:', feedbackText);
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(feedbackText).then(() => {
+      this.showNotification(`Feedback copied for ${studentName || 'student'}`, 'success');
+    }).catch(err => {
+      console.error('Failed to copy feedback:', err);
+      this.showNotification('Failed to copy feedback', 'error');
+    });
   }
 
   openSettingsModal() {
