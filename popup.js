@@ -166,10 +166,16 @@ class MinervaPopup {
       button.textContent = 'Opening...';
       button.disabled = true;
 
-      // Send message to show sidebar and close popup immediately
-      this.sendMessageToTab(currentTab.id, { type: 'SHOW_SIDEBAR' }).catch(err => {
-        console.log('Message send failed, but closing popup anyway:', err);
-      });
+      // Check if we're on assignment grader page and send appropriate message
+      if (currentTab.url.includes('/app/assignment-grader')) {
+        this.sendMessageToTab(currentTab.id, { type: 'SHOW_ASSIGNMENT_GRADER' }).catch(err => {
+          console.log('Message send failed, but closing popup anyway:', err);
+        });
+      } else {
+        this.sendMessageToTab(currentTab.id, { type: 'SHOW_SIDEBAR' }).catch(err => {
+          console.log('Message send failed, but closing popup anyway:', err);
+        });
+      }
       
       // Close popup immediately after sending message
       window.close();
@@ -294,13 +300,27 @@ class MinervaPopup {
 
   sendMessageToTab(tabId, message) {
     return new Promise((resolve, reject) => {
-      chrome.tabs.sendMessage(tabId, message, (response) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(response);
-        }
-      });
+      try {
+        chrome.tabs.sendMessage(tabId, message, (response) => {
+          if (chrome.runtime.lastError) {
+            // Common errors that can be safely ignored
+            const errorMessage = chrome.runtime.lastError.message;
+            if (errorMessage.includes('Could not establish connection') ||
+                errorMessage.includes('Extension context invalidated') ||
+                errorMessage.includes('receiving end does not exist')) {
+              console.log('Content script not ready or extension reloaded:', errorMessage);
+              resolve(null); // Resolve instead of reject for these common cases
+            } else {
+              reject(chrome.runtime.lastError);
+            }
+          } else {
+            resolve(response);
+          }
+        });
+      } catch (error) {
+        console.log('Tab communication error:', error);
+        resolve(null); // Don't reject for tab communication issues
+      }
     });
   }
 
