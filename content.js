@@ -262,35 +262,17 @@ class MinervaContentScript {
   }
 
   adjustPageLayout() {
-    // Find the main content container and adjust its layout
-    const mainContent = document.querySelector('main') || 
-                       document.querySelector('.main-content') || 
-                       document.querySelector('#main') ||
-                       document.querySelector('[role="main"]') ||
-                       document.body;
-    
-    if (mainContent && mainContent !== document.body) {
-      // Add class to indicate sidebar is present
-      mainContent.classList.add('minerva-sidebar-active');
-    } else {
-      // If we can't find a specific main content, adjust body
+    // Always add the class to body to trigger CSS layout changes
       document.body.classList.add('minerva-sidebar-active');
-    }
+    
+    // Also add to html element for broader coverage
+    document.documentElement.classList.add('minerva-sidebar-active');
   }
 
   removeSidebarLayout() {
     // Remove layout adjustments when sidebar is closed
-    const mainContent = document.querySelector('main') || 
-                       document.querySelector('.main-content') || 
-                       document.querySelector('#main') ||
-                       document.querySelector('[role="main"]') ||
-                       document.body;
-    
-    if (mainContent && mainContent !== document.body) {
-      mainContent.classList.remove('minerva-sidebar-active');
-    } else {
       document.body.classList.remove('minerva-sidebar-active');
-    }
+    document.documentElement.classList.remove('minerva-sidebar-active');
   }
 
   injectExtensionCSS() {
@@ -341,29 +323,82 @@ class MinervaContentScript {
         transform: translateX(0) !important;
       }
       
-      /* Adjust page layout when sidebar is active */
+      /* Adjust page layout when sidebar is active - Push entire page */
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) {
+        margin-right: 380px !important;
+        transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        width: calc(100vw - 380px) !important;
+        overflow-x: hidden !important;
+      }
+      
+      /* Alternative fallback for older browsers */
       body.minerva-sidebar-active {
-        transition: padding-right 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        margin-right: 380px !important;
+        transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        width: calc(100vw - 380px) !important;
+        overflow-x: hidden !important;
       }
       
-      /* When sidebar is open, add padding to body to make room */
-      body.minerva-sidebar-active:has(#minerva-assistant-sidebar:not(.collapsed)),
-      body:has(#minerva-assistant-sidebar:not(.collapsed)).minerva-sidebar-active {
-        padding-right: 380px !important;
+      /* Ensure all top-level containers are affected */
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) > *,
+      body.minerva-sidebar-active > * {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
       }
       
-      /* Alternative approach for main content containers */
+      /* Specifically target common page structures */
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) header,
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) nav,
       body:has(#minerva-assistant-sidebar:not(.collapsed)) main,
       body:has(#minerva-assistant-sidebar:not(.collapsed)) .main-content,
       body:has(#minerva-assistant-sidebar:not(.collapsed)) #main,
-      body:has(#minerva-assistant-sidebar:not(.collapsed)) [role="main"] {
-        margin-right: 380px !important;
-        transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) [role="main"],
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) .page-container,
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) .app-container,
+      body.minerva-sidebar-active header,
+      body.minerva-sidebar-active nav,
+      body.minerva-sidebar-active main,
+      body.minerva-sidebar-active .main-content,
+      body.minerva-sidebar-active #main,
+      body.minerva-sidebar-active [role="main"],
+      body.minerva-sidebar-active .page-container,
+      body.minerva-sidebar-active .app-container {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
       }
       
-      /* Ensure content doesn't get cut off */
-      body.minerva-sidebar-active * {
+      /* Prevent any fixed/absolute positioned elements from overlapping */
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) [style*="position: fixed"],
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) [style*="position: absolute"],
+      body.minerva-sidebar-active [style*="position: fixed"],
+      body.minerva-sidebar-active [style*="position: absolute"] {
         max-width: calc(100vw - 380px) !important;
+      }
+      
+      /* Minerva Forum specific adjustments */
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) .navbar,
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) .header,
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) .topbar,
+      body:has(#minerva-assistant-sidebar:not(.collapsed)) .menu,
+      body.minerva-sidebar-active .navbar,
+      body.minerva-sidebar-active .header,
+      body.minerva-sidebar-active .topbar,
+      body.minerva-sidebar-active .menu {
+        width: calc(100vw - 380px) !important;
+        max-width: calc(100vw - 380px) !important;
+        box-sizing: border-box !important;
+      }
+      
+      /* Force layout recalculation for the entire viewport */
+      html:has(#minerva-assistant-sidebar:not(.collapsed)),
+      html.minerva-sidebar-active {
+        overflow-x: hidden !important;
+      }
+      
+      /* Ensure no horizontal scrolling */
+      body:has(#minerva-assistant-sidebar:not(.collapsed)),
+      body.minerva-sidebar-active {
+        overflow-x: hidden !important;
       }
       
       #minerva-assistant-sidebar * {
@@ -1090,6 +1125,185 @@ class MinervaContentScript {
         padding-top: 8px !important;
         margin-top: 8px !important;
       }
+
+      /* Assignment Grader Styles */
+      #minerva-assistant-sidebar .feedback-container {
+        height: calc(100vh - 200px);
+        overflow-y: auto;
+        flex: 1;
+      }
+      
+      /* Make the feedback section fill remaining space */
+      #minerva-assistant-sidebar .sidebar-content {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 80px);
+      }
+      
+      #minerva-assistant-sidebar .section:has(.feedback-container) {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #minerva-assistant-sidebar .feedback-field {
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 16px;
+        background: #f9fafb;
+      }
+
+
+      #minerva-assistant-sidebar .feedback-field textarea {
+        width: 100%;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        padding: 8px;
+        font-size: 14px;
+        resize: vertical;
+        min-height: 60px;
+        font-family: inherit;
+        box-sizing: border-box;
+      }
+
+      #minerva-assistant-sidebar .feedback-field textarea:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+
+      #minerva-assistant-sidebar .feedback-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+        height: 27px;
+      }
+
+      #minerva-assistant-sidebar .feedback-title {
+        font-weight: 600;
+        color: #374151;
+        font-size: 14px;
+        margin: 0;
+        line-height: 27px;
+        min-width: 80px;
+      }
+
+      #minerva-assistant-sidebar .score-input {
+        display: flex;
+        align-items: center;
+      }
+
+      #minerva-assistant-sidebar .score-input input {
+        width: 80px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 0 12px;
+        font-size: 14px;
+        box-sizing: border-box;
+        height: 27px;
+        font-family: inherit;
+        text-align: center;
+        line-height: 25px;
+      }
+
+      #minerva-assistant-sidebar .score-input input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+
+      /* Score-based container background colors */
+      #minerva-assistant-sidebar .feedback-field.score-0 {
+        background: #666666;
+      }
+
+      #minerva-assistant-sidebar .feedback-field.score-1 {
+        background: #DB2F26;
+      }
+
+      #minerva-assistant-sidebar .feedback-field.score-2 {
+        background: #EF8620;
+      }
+
+      #minerva-assistant-sidebar .feedback-field.score-3 {
+        background: #31AA6E;
+      }
+
+      #minerva-assistant-sidebar .feedback-field.score-4 {
+        background: #0B77BE;
+      }
+
+      #minerva-assistant-sidebar .feedback-field.score-5 {
+        background: #5B3E97;
+      }
+
+      #minerva-assistant-sidebar .submit-individual-feedback {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 0 16px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        white-space: nowrap;
+        height: 27px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 70px;
+        line-height: 1;
+      }
+
+      #minerva-assistant-sidebar .submit-individual-feedback:hover {
+        background: #2563eb;
+      }
+
+      #minerva-assistant-sidebar .submit-individual-feedback:active {
+        transform: scale(0.98);
+      }
+
+      #minerva-assistant-sidebar .submit-individual-feedback:disabled,
+      #minerva-assistant-sidebar .submit-individual-feedback.disabled {
+        background: #9ca3af;
+        color: #d1d5db;
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+
+      #minerva-assistant-sidebar .submit-individual-feedback:disabled:hover,
+      #minerva-assistant-sidebar .submit-individual-feedback.disabled:hover {
+        background: #9ca3af;
+        transform: none;
+      }
+
+      #minerva-assistant-sidebar .add-feedback-section {
+        text-align: center;
+        padding: 16px 0;
+      }
+
+      #minerva-assistant-sidebar .add-feedback-section .btn {
+        margin: 0;
+      }
+
+      #minerva-assistant-sidebar #learning-outcome {
+        width: 100%;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        padding: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        box-sizing: border-box;
+      }
+
+      #minerva-assistant-sidebar #learning-outcome:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
       
       /* Copy feedback button in header */
       #minerva-assistant-sidebar .copy-feedback-btn {
@@ -1163,6 +1377,8 @@ class MinervaContentScript {
       this.loadSavedRubric();
     } else if (pageName === 'analytics' && classId) {
       this.loadAnalyticsData(classId);
+    } else if (pageName === 'assignment-grader') {
+      this.setupAssignmentGraderEvents();
     }
   }
 
@@ -1172,6 +1388,8 @@ class MinervaContentScript {
         return this.getGraderPageContent();
       case 'analytics':
         return this.getAnalyticsPageContent();
+      case 'assignment-grader':
+        return this.getAssignmentGraderPageContent();
       case 'unavailable':
         return this.getUnavailablePageContent();
       default:
@@ -1246,6 +1464,50 @@ class MinervaContentScript {
     `;
   }
 
+  getAssignmentGraderPageContent() {
+    return `
+      <div class="section">
+        <div class="section-header">
+          <h4>Learning Outcome</h4>
+          <button id="clear-assignment-form" class="btn btn-small btn-secondary">Clear Form</button>
+        </div>
+        <input type="text" id="learning-outcome" placeholder="Enter HC/LO" />
+        <small style="color: #666; font-size: 12px; display: block; margin-top: 4px;">
+          With or without '#', e.g. #cp-navigation or cp-navigation
+        </small>
+      </div>
+      
+      <div class="section">
+        <h4>Feedback & Scores</h4>
+        <div class="feedback-container">
+          ${this.generateFeedbackFields(5)}
+          <div class="add-feedback-section">
+            <button id="add-feedback-field" class="btn btn-secondary btn-small">Add More</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  generateFeedbackFields(count) {
+    let fieldsHtml = '';
+    for (let i = 1; i <= count; i++) {
+      fieldsHtml += `
+        <div class="feedback-field">
+          <div class="feedback-header">
+            <label class="feedback-title">Feedback ${i}</label>
+            <div class="score-input">
+              <input type="number" id="score-${i}" placeholder="Score" min="0" max="100" />
+            </div>
+            <button class="btn btn-small submit-individual-feedback" data-feedback-id="${i}">Insert</button>
+          </div>
+          <textarea id="feedback-${i}" placeholder="Enter feedback text..." rows="3"></textarea>
+        </div>
+      `;
+    }
+    return fieldsHtml;
+  }
+
   getUnavailablePageContent() {
     return `
       <div class="section unavailable-section">
@@ -1301,7 +1563,791 @@ class MinervaContentScript {
       }
     }, 300); // Wait for transition to complete
     
-    console.log('Sidebar closed and removed');
+  }
+
+  setupAssignmentGraderEvents() {
+    // Initialize feedback field counter
+    this.feedbackFieldCount = 5;
+    
+    // Set up event listeners for existing fields
+    this.setupFeedbackFieldListeners();
+
+    // Add more feedback fields button
+    const addBtn = document.getElementById('add-feedback-field');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        this.addFeedbackField();
+      });
+    }
+
+    // Clear form button
+    const clearBtn = document.getElementById('clear-assignment-form');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        this.clearAssignmentForm();
+      });
+    }
+  }
+
+  setupFeedbackFieldListeners() {
+    // Individual submit buttons
+    const individualSubmitBtns = document.querySelectorAll('.submit-individual-feedback');
+    individualSubmitBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const feedbackId = e.target.getAttribute('data-feedback-id');
+        this.submitIndividualFeedback(feedbackId);
+      });
+    });
+
+    // Score input change listeners for dynamic styling and button state
+    const scoreInputs = document.querySelectorAll('[id^="score-"]');
+    scoreInputs.forEach(scoreInput => {
+      if (scoreInput && !scoreInput.hasAttribute('data-listener-added')) {
+        scoreInput.addEventListener('input', (e) => {
+          this.updateScoreInputStyling(e.target);
+          this.updateSubmitButtonState(e.target);
+        });
+        scoreInput.addEventListener('change', (e) => {
+          this.updateScoreInputStyling(e.target);
+          this.updateSubmitButtonState(e.target);
+        });
+        scoreInput.setAttribute('data-listener-added', 'true');
+      }
+    });
+
+    // Learning outcome change listener for button states
+    const learningOutcomeInput = document.getElementById('learning-outcome');
+    if (learningOutcomeInput && !learningOutcomeInput.hasAttribute('data-listener-added')) {
+      learningOutcomeInput.addEventListener('input', () => {
+        this.updateAllSubmitButtonStates();
+      });
+      learningOutcomeInput.addEventListener('change', () => {
+        this.updateAllSubmitButtonStates();
+      });
+      learningOutcomeInput.setAttribute('data-listener-added', 'true');
+    }
+
+    // Initial button state check
+    this.updateAllSubmitButtonStates();
+  }
+
+  addFeedbackField() {
+    this.feedbackFieldCount++;
+    const newFieldHtml = `
+      <div class="feedback-field">
+        <div class="feedback-header">
+          <label class="feedback-title">Feedback ${this.feedbackFieldCount}</label>
+          <div class="score-input">
+            <input type="number" id="score-${this.feedbackFieldCount}" placeholder="Score" min="0" max="100" />
+          </div>
+          <button class="btn btn-small submit-individual-feedback" data-feedback-id="${this.feedbackFieldCount}">Insert</button>
+        </div>
+        <textarea id="feedback-${this.feedbackFieldCount}" placeholder="Enter feedback text..." rows="3"></textarea>
+      </div>
+    `;
+    
+    // Insert before the add button section
+    const addSection = document.querySelector('.add-feedback-section');
+    if (addSection) {
+      addSection.insertAdjacentHTML('beforebegin', newFieldHtml);
+      
+      // Set up listeners for the new field
+      this.setupFeedbackFieldListeners();
+    }
+  }
+
+  updateScoreInputStyling(scoreInput) {
+    const value = parseInt(scoreInput.value);
+    
+    // Find the parent feedback field container
+    const feedbackField = scoreInput.closest('.feedback-field');
+    if (!feedbackField) return;
+    
+    // Remove all existing score classes from the container
+    feedbackField.classList.remove('score-0', 'score-1', 'score-2', 'score-3', 'score-4', 'score-5');
+    
+    // Add appropriate class based on score to the container
+    if (!isNaN(value) && value >= 0 && value <= 5) {
+      feedbackField.classList.add(`score-${value}`);
+    }
+  }
+
+  updateSubmitButtonState(scoreInput) {
+    const feedbackId = scoreInput.id.replace('score-', '');
+    const submitBtn = document.querySelector(`.submit-individual-feedback[data-feedback-id="${feedbackId}"]`);
+    
+    if (submitBtn) {
+      const hasOutcome = document.getElementById('learning-outcome')?.value.trim() || false;
+      const hasScore = scoreInput.value.trim() || false;
+      
+      // Enable button only if both outcome and score are filled
+      if (hasOutcome && hasScore) {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('disabled');
+      } else {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('disabled');
+      }
+    }
+  }
+
+  updateAllSubmitButtonStates() {
+    const hasOutcome = document.getElementById('learning-outcome')?.value.trim() || false;
+    
+    // Update all submit buttons based on outcome and their respective scores
+    const submitBtns = document.querySelectorAll('.submit-individual-feedback');
+    submitBtns.forEach(btn => {
+      const feedbackId = btn.getAttribute('data-feedback-id');
+      const scoreInput = document.getElementById(`score-${feedbackId}`);
+      const hasScore = scoreInput?.value.trim() || false;
+      
+      // Enable button only if both outcome and score are filled
+      if (hasOutcome && hasScore) {
+        btn.disabled = false;
+        btn.classList.remove('disabled');
+      } else {
+        btn.disabled = true;
+        btn.classList.add('disabled');
+      }
+    });
+  }
+
+  submitAssignmentFeedback() {
+    try {
+      // Get learning outcome
+      const learningOutcome = document.getElementById('learning-outcome')?.value || '';
+      
+      // Collect all feedback and scores (dynamic count)
+      const feedbackData = [];
+      const feedbackFields = document.querySelectorAll('[id^="feedback-"]');
+      
+      feedbackFields.forEach((feedbackField) => {
+        const fieldId = feedbackField.id.replace('feedback-', '');
+        const scoreField = document.getElementById(`score-${fieldId}`);
+        
+        const feedback = feedbackField.value || '';
+        const score = scoreField?.value || '';
+        
+        if (feedback || score.trim()) {
+          feedbackData.push({ feedback: feedback, score: score.trim() });
+        }
+      });
+
+      if (!learningOutcome.trim() && feedbackData.length === 0) {
+        alert('Please enter a learning outcome or at least one feedback item.');
+        return;
+      }
+
+      // Find the add comment button on the page
+      const addCommentBtn = document.querySelector('button.button-classroom-primary.add-comment');
+      if (!addCommentBtn) {
+        alert('Could not find the add comment button on the page. Make sure you are on the assignment grader page.');
+        return;
+      }
+
+      // Click the add comment button to open the comment interface
+      addCommentBtn.click();
+
+      // Wait a moment for the interface to load, then populate fields
+      setTimeout(() => {
+        this.populateAssignmentFields(learningOutcome, feedbackData);
+      }, 500);
+
+    } catch (error) {
+      console.error('Error submitting assignment feedback:', error);
+      alert('Error submitting feedback. Please check the console for details.');
+    }
+  }
+
+  submitIndividualFeedback(feedbackId) {
+    try {
+      // Get learning outcome
+      const learningOutcome = document.getElementById('learning-outcome')?.value || '';
+      
+      // Get the specific feedback and score
+      const feedback = document.getElementById(`feedback-${feedbackId}`)?.value || '';
+      const score = document.getElementById(`score-${feedbackId}`)?.value || '';
+
+      if (!feedback && !score.trim()) {
+        alert(`Please enter feedback text or score for Feedback ${feedbackId}.`);
+        return;
+      }
+
+      // Create feedback data array with just this item (preserve line breaks in feedback)
+      const feedbackData = [{ feedback: feedback, score: score.trim() }];
+
+      // Find the add comment button on the page
+      const addCommentBtn = document.querySelector('button.button-classroom-primary.add-comment');
+      if (!addCommentBtn) {
+        alert('Could not find the add comment button on the page. Make sure you are on the assignment grader page.');
+        return;
+      }
+
+      // Click the add comment button to open the comment interface
+      addCommentBtn.click();
+
+      // Wait a moment for the interface to load, then populate fields
+      setTimeout(() => {
+        this.populateAssignmentFields(learningOutcome, feedbackData);
+      }, 500);
+
+    } catch (error) {
+      console.error('Error submitting individual feedback:', error);
+      alert('Error submitting feedback. Please check the console for details.');
+    }
+  }
+
+  populateAssignmentFields(learningOutcome, feedbackData) {
+    try {
+      // Minimal wait for modal to load, then do everything immediately
+      setTimeout(() => {
+        this.doPopulateFieldsFast(learningOutcome, feedbackData);
+      }, 100);
+      
+    } catch (error) {
+      console.error('Error populating assignment fields:', error);
+      alert('Error populating fields. The comment interface may have changed.');
+    }
+  }
+
+  async doPopulateFieldsFast(learningOutcome, feedbackData) {
+    try {
+      // Step 1: Populate comment immediately (independent of outcome)
+      this.populateComment(feedbackData);
+      
+      // Step 2: Populate outcome and wait for grade field
+      if (learningOutcome) {
+        const outcomePopulated = await this.populateOutcomeFast(learningOutcome);
+        if (outcomePopulated) {
+          // Step 3: Wait for grade field to appear with polling
+          await this.waitForGradeField(feedbackData);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error in doPopulateFieldsFast:', error);
+      alert('Error populating fields. Please check the console for details.');
+    }
+  }
+
+  doPopulateFields(learningOutcome, feedbackData) {
+    try {
+      let populated = false;
+
+      // Step 1: Handle Learning Outcome first (required to make grade field appear)
+      if (learningOutcome) {
+        this.populateOutcome(learningOutcome).then(outcomePopulated => {
+          if (outcomePopulated) {
+            populated = true;
+            
+            // Step 2: Wait for grade field to appear, then populate comment and try to set grade
+            setTimeout(() => {
+              this.populateCommentAndGrade(feedbackData);
+            }, 1000); // Wait for grade field to appear after outcome selection
+          }
+        });
+      } else {
+        // No outcome, just populate comment
+        this.populateCommentAndGrade(feedbackData);
+      }
+      
+    } catch (error) {
+      console.error('Error in doPopulateFields:', error);
+      alert('Error populating fields. Please check the console for details.');
+    }
+  }
+
+  async populateOutcome(learningOutcome) {
+    try {
+      // Try multiple selectors for the outcome field (excluding our own extension fields)
+      const possibleSelectors = [
+        'select#select-outcome', // The actual Minerva outcome selector
+        'input[placeholder*="Choose an outcome"]',
+        'select[name*="outcome"]',
+        'input[placeholder*="Choose"]:not(#learning-outcome)', // Exclude our own field
+        'input[type="text"]:not(#learning-outcome):not([id^="feedback-"]):not([id^="score-"])', // Exclude extension fields
+        '.outcome-input',
+        '#outcome',
+        '[data-testid*="outcome"]',
+        'select:not([id^="minerva-assistant"])' // Any select not from our extension
+      ];
+      
+      let outcomeField = null;
+      for (const selector of possibleSelectors) {
+        const elements = document.querySelectorAll(selector);
+        
+        if (elements.length > 0) {
+          // Use the first element found
+          outcomeField = elements[0];
+          break;
+        }
+      }
+      
+      if (outcomeField) {
+        // Remove # if present in learning outcome
+        const cleanOutcome = learningOutcome.replace(/^#/, '');
+        
+        // Handle both input and select elements
+        if (outcomeField.tagName === 'SELECT') {
+          // For select elements, try to find matching option
+          const options = Array.from(outcomeField.options);
+          
+          // Try multiple matching strategies
+          let matchingOption = null;
+          
+          // Strategy 1: Exact match
+          matchingOption = options.find(option => 
+            option.value === cleanOutcome ||
+            option.text === cleanOutcome
+          );
+          
+          if (!matchingOption) {
+            // Strategy 2: Contains match (case insensitive)
+            matchingOption = options.find(option => 
+              option.value.toLowerCase().includes(cleanOutcome.toLowerCase()) ||
+              option.text.toLowerCase().includes(cleanOutcome.toLowerCase())
+            );
+          }
+          
+          if (!matchingOption) {
+            // Strategy 3: Partial match with common prefixes
+            const commonPrefixes = ['cp-', '#cp-', 'outcome-', '#'];
+            for (const prefix of commonPrefixes) {
+              const withPrefix = prefix + cleanOutcome;
+              const withoutPrefix = cleanOutcome.replace(prefix, '');
+              
+              matchingOption = options.find(option => 
+                option.value.toLowerCase().includes(withPrefix.toLowerCase()) ||
+                option.text.toLowerCase().includes(withPrefix.toLowerCase()) ||
+                option.value.toLowerCase().includes(withoutPrefix.toLowerCase()) ||
+                option.text.toLowerCase().includes(withoutPrefix.toLowerCase())
+              );
+              
+              if (matchingOption) break;
+            }
+          }
+          
+          if (matchingOption) {
+            outcomeField.value = matchingOption.value;
+          }
+        } else {
+          // For input elements
+          outcomeField.value = cleanOutcome;
+        }
+        
+        // Trigger events to make sure the interface updates
+        outcomeField.focus();
+        outcomeField.dispatchEvent(new Event('focus', { bubbles: true }));
+        outcomeField.dispatchEvent(new Event('input', { bubbles: true }));
+        outcomeField.dispatchEvent(new Event('change', { bubbles: true }));
+        outcomeField.dispatchEvent(new Event('blur', { bubbles: true }));
+        
+        // Simulate typing for autocomplete fields
+        if (outcomeField.tagName === 'INPUT') {
+          for (let i = 0; i < cleanOutcome.length; i++) {
+            setTimeout(() => {
+              const char = cleanOutcome[i];
+              const keyEvent = new KeyboardEvent('keydown', {
+                key: char,
+                bubbles: true,
+                cancelable: true
+              });
+              outcomeField.dispatchEvent(keyEvent);
+              outcomeField.dispatchEvent(new Event('input', { bubbles: true }));
+            }, i * 50);
+          }
+        }
+        
+        // Simulate pressing Enter to confirm selection
+        const enterEvent = new KeyboardEvent('keydown', {
+          key: 'Enter',
+          code: 'Enter',
+          keyCode: 13,
+          bubbles: true,
+          cancelable: true
+        });
+        outcomeField.dispatchEvent(enterEvent);
+        
+        const enterUpEvent = new KeyboardEvent('keyup', {
+          key: 'Enter',
+          code: 'Enter',
+          keyCode: 13,
+          bubbles: true,
+          cancelable: true
+        });
+        outcomeField.dispatchEvent(enterUpEvent);
+        
+        return true;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      console.error('Error populating outcome:', error);
+      return false;
+    }
+  }
+
+  populateCommentAndGrade(feedbackData) {
+    try {
+      let populated = false;
+
+      // Handle Comment Text Area (excluding our extension textareas)
+      const commentSelectors = [
+        'textarea#comment', // The actual Minerva comment field
+        'textarea[placeholder*="Use"]', // Based on screenshot: "Use [⌘ + enter] to submit"
+        'textarea[placeholder*="submit"]:not([id^="feedback-"])', // Exclude our extension fields
+        'textarea[placeholder*="comment"]:not([id^="feedback-"])', // Exclude our extension fields
+        'textarea:not([id^="feedback-"]):not(#minerva-assistant-sidebar textarea)', // Fallback excluding our fields
+        '.comment-textarea',
+        '[data-testid*="comment"]'
+      ];
+      
+      let commentTextArea = null;
+      for (const selector of commentSelectors) {
+        commentTextArea = document.querySelector(selector);
+        if (commentTextArea) {
+          break;
+        }
+      }
+      
+      if (commentTextArea) {
+        // Build the feedback text (without scores - they should be set via grade field)
+        let feedbackText = '';
+        
+        feedbackData.forEach((item, index) => {
+          if (item.feedback) {
+            feedbackText += item.feedback;
+            feedbackText += '\n\n';
+          }
+        });
+        
+        // Set the comment text (preserve leading line breaks)
+        commentTextArea.value = feedbackText.replace(/\n\n$/, ''); // Only remove trailing double newlines
+        commentTextArea.dispatchEvent(new Event('input', { bubbles: true }));
+        commentTextArea.dispatchEvent(new Event('change', { bubbles: true }));
+        commentTextArea.dispatchEvent(new Event('keyup', { bubbles: true }));
+        populated = true;
+      }
+
+      // Try to populate grade field (should be visible after outcome selection)
+      const firstScore = feedbackData.find(item => item.score);
+      if (firstScore && firstScore.score) {
+        setTimeout(() => {
+          this.populateGradeField(firstScore.score);
+        }, 500);
+      }
+      
+    } catch (error) {
+      console.error('Error populating comment and grade:', error);
+    }
+  }
+
+  populateGradeField(score) {
+    try {
+      // Look for grade/score input field that should appear after outcome selection (excluding our extension fields)
+      const gradeSelectors = [
+        'select#select-score', // The actual Minerva grade selector
+        'input[type="number"]:not([id^="score-"]):not(#learning-outcome)', // Exclude our extension score fields
+        'input[name*="grade"]',
+        'input[name*="score"]:not([id^="score-"])', // Exclude our extension fields
+        'input[placeholder*="grade"]',
+        'input[placeholder*="score"]:not([id^="score-"])', // Exclude our extension fields
+        'input[placeholder*="0"]:not([id^="score-"])', // Sometimes grade fields have "0" placeholder
+        'input[placeholder*="5"]:not([id^="score-"])', // Or "0-5" range indicators
+        '.grade-input',
+        '#grade',
+        '#score',
+        'input[min]:not([id^="score-"])', // Number inputs often have min attribute
+        'input[max]:not([id^="score-"])', // Number inputs often have max attribute
+        'select:not([id^="minerva-assistant"])' // Any select not from our extension
+      ];
+      
+      let gradeField = null;
+      for (const selector of gradeSelectors) {
+        const elements = document.querySelectorAll(selector);
+        
+        if (elements.length > 0) {
+          gradeField = elements[0];
+          break;
+        }
+      }
+      
+      if (gradeField) {
+        if (gradeField.tagName === 'SELECT') {
+          const options = Array.from(gradeField.options);
+          
+          // Find option that matches the score
+          const matchingOption = options.find(option => 
+            option.value === score.toString() ||
+            option.text === score.toString() ||
+            option.value.includes(score.toString()) ||
+            option.text.includes(score.toString())
+          );
+          
+          if (matchingOption) {
+            gradeField.value = matchingOption.value;
+          }
+        } else {
+          gradeField.value = score;
+        }
+        
+        gradeField.focus();
+        gradeField.dispatchEvent(new Event('focus', { bubbles: true }));
+        gradeField.dispatchEvent(new Event('input', { bubbles: true }));
+        gradeField.dispatchEvent(new Event('change', { bubbles: true }));
+        gradeField.dispatchEvent(new Event('blur', { bubbles: true }));
+        return true;
+      } else {
+        // Fallback to keyboard shortcut method
+        const commentTextArea = document.querySelector('textarea');
+        if (commentTextArea) {
+          this.simulateScoreKeypress(commentTextArea, score);
+        }
+        return false;
+      }
+    } catch (error) {
+      console.error('Error populating grade field:', error);
+      return false;
+    }
+  }
+
+  simulateScoreKeypress(element, score) {
+    try {
+      // Simulate the keyboard shortcut ⌘ + <score>
+      const event = new KeyboardEvent('keydown', {
+        key: score.toString(),
+        code: `Digit${score}`,
+        ctrlKey: false,
+        altKey: false,
+        shiftKey: false,
+        metaKey: true, // ⌘ key on Mac (Cmd)
+        bubbles: true,
+        cancelable: true
+      });
+      
+      element.focus();
+      element.dispatchEvent(event);
+      
+      // Also try with Ctrl key for Windows users
+      setTimeout(() => {
+        const ctrlEvent = new KeyboardEvent('keydown', {
+          key: score.toString(),
+          code: `Digit${score}`,
+          ctrlKey: true,
+          altKey: false,
+          shiftKey: false,
+          metaKey: false,
+          bubbles: true,
+          cancelable: true
+        });
+        element.dispatchEvent(ctrlEvent);
+      }, 100);
+      
+    } catch (error) {
+      console.error('Error simulating score keypress:', error);
+    }
+  }
+
+  async populateOutcomeFast(learningOutcome) {
+    try {
+      const outcomeField = document.querySelector('select#select-outcome');
+      if (!outcomeField) {
+        return false;
+      }
+      
+      const cleanOutcome = learningOutcome.replace(/^#/, '');
+      const options = Array.from(outcomeField.options);
+      
+      // Extract and match only the first word after '#' in each option
+      let matchingOption = null;
+      
+      // Helper function to extract the outcome code from option text
+      const extractOutcomeCode = (text) => {
+        // Look for pattern like "#cp-something" or "#something" and extract just that part
+        const match = text.match(/#([a-zA-Z0-9-]+)/);
+        return match ? match[1].toLowerCase() : text.toLowerCase();
+      };
+      
+      // Prepare the search term (with and without cp- prefix)
+      const searchTerm = cleanOutcome.toLowerCase();
+      const searchTermWithCp = `cp-${searchTerm}`;
+      
+      // Find option by matching only the outcome code (first word after #)
+      matchingOption = options.find(option => {
+        const optionCode = extractOutcomeCode(option.text || option.value);
+        
+        return optionCode === searchTerm || 
+               optionCode === searchTermWithCp ||
+               (optionCode.startsWith('cp-') && optionCode.replace('cp-', '') === searchTerm);
+      });
+      
+      if (matchingOption) {
+        // Set the value
+        outcomeField.value = matchingOption.value;
+        
+        // Handle Select2 components
+        if (window.jQuery && window.jQuery(outcomeField).data('select2')) {
+          window.jQuery(outcomeField).val(matchingOption.value).trigger('change');
+        } else {
+          // Standard select element events
+          outcomeField.dispatchEvent(new Event('change', { bubbles: true }));
+          outcomeField.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        
+        // Additional events
+        outcomeField.dispatchEvent(new Event('blur', { bubbles: true }));
+        outcomeField.focus();
+        
+        return true;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      console.error('Error in populateOutcomeFast:', error);
+      return false;
+    }
+  }
+
+  populateComment(feedbackData) {
+    try {
+      const commentField = document.querySelector('textarea#comment');
+      if (!commentField) {
+        return false;
+      }
+      
+      // Build feedback text (preserve line breaks)
+      let feedbackText = '';
+      feedbackData.forEach((item) => {
+        if (item.feedback) {
+          feedbackText += item.feedback + '\n\n';
+        }
+      });
+      
+      // Don't trim the entire text to preserve leading line breaks
+      commentField.value = feedbackText.replace(/\n\n$/, ''); // Only remove trailing double newlines
+      commentField.dispatchEvent(new Event('input', { bubbles: true }));
+      commentField.dispatchEvent(new Event('change', { bubbles: true }));
+      
+      return true;
+    } catch (error) {
+      console.error('Error populating comment:', error);
+      return false;
+    }
+  }
+
+  async waitForGradeField(feedbackData) {
+    try {
+      const firstScore = feedbackData.find(item => item.score);
+      if (!firstScore || !firstScore.score) {
+        return;
+      }
+      
+      // Poll for grade field with faster timeout
+      let attempts = 0;
+      const maxAttempts = 15; // 750ms max
+      
+      const pollForGradeField = () => {
+        return new Promise((resolve) => {
+          const checkField = () => {
+            attempts++;
+            const gradeField = document.querySelector('select#select-score');
+            
+            if (gradeField && gradeField.options.length > 1) {
+              resolve(gradeField);
+            } else if (attempts >= maxAttempts) {
+              resolve(null);
+            } else {
+              setTimeout(checkField, 50); // Check every 50ms instead of 100ms
+            }
+          };
+          checkField();
+        });
+      };
+      
+      const gradeField = await pollForGradeField();
+      
+      if (gradeField) {
+        this.populateGradeFieldFast(gradeField, firstScore.score);
+      }
+      
+    } catch (error) {
+      console.error('Error waiting for grade field:', error);
+    }
+  }
+
+  populateGradeFieldFast(gradeField, score) {
+    try {
+      const options = Array.from(gradeField.options);
+      
+      // Try multiple matching strategies for different grade systems
+      const matchingOption = options.find(option => 
+        option.value === score.toString() ||
+        option.text === score.toString() ||
+        option.innerHTML === score.toString() ||
+        // Handle different grade formats
+        option.text.includes(score.toString()) ||
+        option.innerHTML.includes(score.toString()) ||
+        // Handle letter grades if score maps to letters
+        (score === 5 && (option.text.toLowerCase().includes('a') || option.text.toLowerCase().includes('excellent'))) ||
+        (score === 4 && (option.text.toLowerCase().includes('b') || option.text.toLowerCase().includes('good'))) ||
+        (score === 3 && (option.text.toLowerCase().includes('c') || option.text.toLowerCase().includes('satisfactory'))) ||
+        (score === 2 && (option.text.toLowerCase().includes('d') || option.text.toLowerCase().includes('needs work'))) ||
+        (score === 1 && (option.text.toLowerCase().includes('f') || option.text.toLowerCase().includes('poor'))) ||
+        (score === 0 && (option.text.toLowerCase().includes('f') || option.text.toLowerCase().includes('fail')))
+      );
+      
+      if (matchingOption) {
+        // Set the value
+        gradeField.value = matchingOption.value;
+        
+        // Handle Select2 components (common in web apps)
+        if (window.jQuery && window.jQuery(gradeField).data('select2')) {
+          window.jQuery(gradeField).val(matchingOption.value).trigger('change');
+        } else {
+          // Standard select element events
+          gradeField.dispatchEvent(new Event('change', { bubbles: true }));
+          gradeField.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        
+        // Additional events that might be needed
+        gradeField.dispatchEvent(new Event('blur', { bubbles: true }));
+        gradeField.dispatchEvent(new Event('focus', { bubbles: true }));
+        
+        // Force a visual update by focusing and blurring
+        gradeField.focus();
+        gradeField.blur();
+      }
+    } catch (error) {
+      console.error('Error in populateGradeFieldFast:', error);
+    }
+  }
+
+  clearAssignmentForm() {
+    // Clear learning outcome
+    const learningOutcome = document.getElementById('learning-outcome');
+    if (learningOutcome) learningOutcome.value = '';
+    
+    // Clear all feedback and score fields (dynamic count)
+    const feedbackFields = document.querySelectorAll('[id^="feedback-"]');
+    const scoreFields = document.querySelectorAll('[id^="score-"]');
+    
+    feedbackFields.forEach(field => {
+      field.value = '';
+      // Remove score styling from parent container
+      const container = field.closest('.feedback-field');
+      if (container) {
+        container.classList.remove('score-0', 'score-1', 'score-2', 'score-3', 'score-4', 'score-5');
+      }
+    });
+    
+    scoreFields.forEach(field => {
+      field.value = '';
+      // Also remove score styling when clearing score fields
+      const container = field.closest('.feedback-field');
+      if (container) {
+        container.classList.remove('score-0', 'score-1', 'score-2', 'score-3', 'score-4', 'score-5');
+      }
+    });
   }
 
 
@@ -1694,31 +2740,25 @@ class MinervaContentScript {
     // Calculate a composite engagement score from various metrics
     let score = 0;
     
-    // Focus percentage (40% weight)
+    // Focus percentage (10% weight)
     const focusPercentage = student['window-focus-percentage'] || student.windowFocusPercentage || 0;
-    score += focusPercentage * 0.4;
+    score += focusPercentage * 0.1;
     
-    // Talk time status (30% weight)
+    // Talk time status (35% weight)
     const talkTime = student['talk-time'] || student.talkTime || {};
     const talkTimeScore = this.getStatusScore(talkTime.status);
-    score += talkTimeScore * 30 * 0.3;
+    score += talkTimeScore * 30 * 0.35;
     
-    // Breakout talk time status (20% weight)
+    // Breakout talk time status (35% weight)
     const breakoutTalkTime = student['breakout-talk-time'] || student.breakoutTalkTime || {};
     const breakoutScore = this.getStatusScore(breakoutTalkTime.status);
-    score += breakoutScore * 30 * 0.2;
+    score += breakoutScore * 30 * 0.35;
     
-    // Activity metrics (10% weight)
-    const reactions = student.reactions || 0;
+    // Activity metrics (20% weight) - only hand raises
     const handRaises = student['hand-raises'] || student.handRaises || 0;
-    const chatMessages = student['chat-messages'] || student.chatMessages || 0;
     
-    const activityScore = Math.min(100, 
-      (reactions * 2) + 
-      (handRaises * 5) + 
-      (chatMessages * 3)
-    );
-    score += activityScore * 0.1;
+    const activityScore = Math.min(100, handRaises * 5);
+    score += activityScore * 0.2;
     
     return Math.round(Math.max(0, Math.min(100, score)));
   }
@@ -2104,6 +3144,11 @@ Hand Raises: ${handRaises || 'N/A'} (${handRaisePercentile || 'N/A'} percentile)
          case 'SHOW_ANALYTICS':
            this.ensureSidebarExists();
            this.loadSidebarPage('analytics', request.classId);
+           this.sidebar.classList.remove('collapsed');
+           break;
+         case 'SHOW_ASSIGNMENT_GRADER':
+           this.ensureSidebarExists();
+           this.loadSidebarPage('assignment-grader');
            this.sidebar.classList.remove('collapsed');
            break;
         case 'OPEN_SETTINGS':
