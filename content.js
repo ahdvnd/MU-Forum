@@ -1289,6 +1289,169 @@ class MinervaContentScript {
         margin: 0;
       }
 
+      /* Welcome page styles */
+      #minerva-assistant-sidebar .welcome-section {
+        text-align: center;
+        padding: 32px 24px;
+      }
+
+      #minerva-assistant-sidebar .rubric-option {
+        margin-bottom: 24px;
+      }
+
+      #minerva-assistant-sidebar .rubric-choice-btn {
+        width: 100%;
+        padding: 16px;
+        font-size: 16px;
+        margin-bottom: 8px;
+      }
+
+      /* CSV upload styles */
+      #minerva-assistant-sidebar .csv-upload-area {
+        text-align: center;
+        padding: 20px;
+        border: 2px dashed #d1d5db;
+        border-radius: 8px;
+        margin: 16px 0;
+      }
+
+      #minerva-assistant-sidebar #csv-preview {
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 12px;
+        background: #f9fafb;
+      }
+
+      #minerva-assistant-sidebar #csv-hc-lo-select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        font-size: 14px;
+        margin-bottom: 12px;
+      }
+
+      #minerva-assistant-sidebar #feedback-preview {
+        margin-top: 8px;
+      }
+
+      /* CSV feedback display styles */
+      #minerva-assistant-sidebar .feedback-text-display {
+        background: white;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        padding: 8px;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #374151;
+        margin-top: 8px;
+      }
+
+      #minerva-assistant-sidebar .score-display {
+        background: #f3f4f6;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #374151;
+        min-width: 24px;
+        text-align: center;
+      }
+
+      #minerva-assistant-sidebar .csv-insert-btn {
+        background: #10b981;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 0 16px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        white-space: nowrap;
+        height: 27px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 70px;
+      }
+
+      #minerva-assistant-sidebar .csv-insert-btn:hover {
+        background: #059669;
+      }
+
+      #minerva-assistant-sidebar .csv-insert-btn:active {
+        transform: scale(0.98);
+      }
+
+      /* CSV information section styles */
+      #minerva-assistant-sidebar .csv-info-section {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        padding: 16px;
+        margin-bottom: 20px;
+      }
+
+      #minerva-assistant-sidebar .csv-info-section h5 {
+        margin: 0 0 12px 0;
+        color: #374151;
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      #minerva-assistant-sidebar .csv-info-section h6 {
+        margin: 12px 0 6px 0;
+        color: #374151;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      #minerva-assistant-sidebar .csv-requirements ul {
+        margin: 8px 0;
+        padding-left: 20px;
+      }
+
+      #minerva-assistant-sidebar .csv-requirements li {
+        margin-bottom: 4px;
+        font-size: 14px;
+        color: #374151;
+      }
+
+      #minerva-assistant-sidebar .csv-example {
+        margin: 16px 0;
+      }
+
+      #minerva-assistant-sidebar .csv-example pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        margin: 8px 0;
+      }
+
+      #minerva-assistant-sidebar .csv-notes {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 4px;
+        padding: 12px;
+        margin-top: 16px;
+      }
+
+      #minerva-assistant-sidebar .csv-notes p {
+        margin: 0 0 8px 0;
+        color: #1e40af;
+        font-weight: 600;
+      }
+
+      #minerva-assistant-sidebar .csv-notes ul {
+        margin: 0;
+        padding-left: 16px;
+      }
+
+      #minerva-assistant-sidebar .csv-notes li {
+        margin-bottom: 4px;
+      }
+
       #minerva-assistant-sidebar #learning-outcome {
         width: 100%;
         border: 1px solid #d1d5db;
@@ -1378,7 +1541,13 @@ class MinervaContentScript {
     } else if (pageName === 'analytics' && classId) {
       this.loadAnalyticsData(classId);
     } else if (pageName === 'assignment-grader') {
+      this.setupAssignmentGraderWelcomeEvents();
+    } else if (pageName === 'assignment-grader-manual') {
       this.setupAssignmentGraderEvents();
+    } else if (pageName === 'assignment-grader-csv') {
+      this.setupAssignmentGraderCSVEvents();
+    } else if (pageName === 'assignment-grader-csv-loaded') {
+      this.setupAssignmentGraderCSVLoadedEvents();
     }
   }
 
@@ -1389,7 +1558,13 @@ class MinervaContentScript {
       case 'analytics':
         return this.getAnalyticsPageContent();
       case 'assignment-grader':
+        return this.getAssignmentGraderWelcomePageContent();
+      case 'assignment-grader-manual':
         return this.getAssignmentGraderPageContent();
+      case 'assignment-grader-csv':
+        return this.getAssignmentGraderCSVPageContent();
+      case 'assignment-grader-csv-loaded':
+        return this.getAssignmentGraderCSVLoadedPageContent();
       case 'unavailable':
         return this.getUnavailablePageContent();
       default:
@@ -1464,16 +1639,48 @@ class MinervaContentScript {
     `;
   }
 
+  getAssignmentGraderWelcomePageContent() {
+    return `
+      <div class="section welcome-section">
+        <h4>Choose Rubric Input Method</h4>
+        <p style="color: #666; font-size: 14px; margin-bottom: 20px;">
+          Select how you'd like to provide your grading rubric and feedback:
+        </p>
+        
+        <div class="rubric-option">
+          <button id="upload-csv-rubric" class="btn btn-primary rubric-choice-btn">
+            📄 Upload a CSV of your rubric
+          </button>
+          <p style="color: #666; font-size: 12px; margin-top: 8px;">
+            Upload a CSV file with columns: HC/LO, Comment, Grade (optional)
+          </p>
+        </div>
+        
+        <div class="rubric-option">
+          <button id="manual-rubric" class="btn btn-secondary rubric-choice-btn">
+            ✏️ Manually enter your rubric
+          </button>
+          <p style="color: #666; font-size: 12px; margin-top: 8px;">
+            Enter feedback and grades manually using the form interface
+          </p>
+        </div>
+      </div>
+    `;
+  }
+
   getAssignmentGraderPageContent() {
     return `
       <div class="section">
         <div class="section-header">
           <h4>Learning Outcome</h4>
-          <button id="clear-assignment-form" class="btn btn-small btn-secondary">Clear Form</button>
+          <div class="header-buttons">
+            <button id="back-to-welcome" class="btn btn-small btn-secondary">← Back</button>
+            <button id="clear-assignment-form" class="btn btn-small btn-secondary">Clear Form</button>
+          </div>
         </div>
         <input type="text" id="learning-outcome" placeholder="Enter HC/LO" />
         <small style="color: #666; font-size: 12px; display: block; margin-top: 4px;">
-          With or without '#', e.g. #cp-navigation or cp-navigation
+          Optional. With or without '#', e.g. #cp-navigation or cp-navigation. Leave empty for general comments.
         </small>
       </div>
       
@@ -1484,6 +1691,79 @@ class MinervaContentScript {
           <div class="add-feedback-section">
             <button id="add-feedback-field" class="btn btn-secondary btn-small">Add More</button>
           </div>
+        </div>
+      </div>
+    `;
+  }
+
+  getAssignmentGraderCSVPageContent() {
+    return `
+      <div class="section">
+        <div class="section-header">
+          <h4>CSV Rubric Upload</h4>
+          <button id="back-to-welcome" class="btn btn-small btn-secondary">← Back</button>
+        </div>
+        
+        <div class="csv-info-section">
+          <h5>📄 CSV File Requirements</h5>
+          <div class="csv-requirements">
+            <p><strong>Required Columns:</strong></p>
+            <ul>
+              <li><strong>HC/LO</strong> - Habit of Mind or Learning Outcome (e.g., "cp-navigation", "professionalism")</li>
+              <li><strong>Comment</strong> - Feedback text (can include line breaks)</li>
+            </ul>
+            
+            <p><strong>Optional Columns:</strong></p>
+            <ul>
+              <li><strong>Grade</strong> - Numeric grade 0-5 (leave empty if no grade)</li>
+            </ul>
+            
+            
+          </div>
+        </div>
+        
+        <div class="csv-upload-area">
+          <input type="file" id="csv-file-input" accept=".csv" style="display: none;" />
+          <button id="select-csv-file" class="btn btn-primary">Choose CSV File</button>
+          <div id="csv-file-info" style="margin-top: 8px; font-size: 12px; color: #666;"></div>
+        </div>
+        
+        <div id="csv-preview" style="display: none; margin-top: 16px;">
+          <h5>CSV Preview:</h5>
+          <div id="csv-preview-content"></div>
+          <button id="load-csv-data" class="btn btn-primary" style="margin-top: 12px;">Load Rubric Data</button>
+        </div>
+      </div>
+    `;
+  }
+
+  getAssignmentGraderCSVLoadedPageContent() {
+    if (!this.groupedRubricData || Object.keys(this.groupedRubricData).length === 0) {
+      return this.getAssignmentGraderCSVPageContent();
+    }
+
+    const uniqueHCLOs = Object.keys(this.groupedRubricData).sort();
+    
+    return `
+      <div class="section">
+        <div class="section-header">
+          <h4>Rubric Loaded</h4>
+          <button id="back-to-welcome" class="btn btn-small btn-secondary">← Back</button>
+        </div>
+        <p style="color: #666; font-size: 14px; margin-bottom: 16px;">
+          ${this.csvRubricData.length} entries loaded. Select an HC/LO to see available feedback options.
+        </p>
+        
+        <select id="csv-hc-lo-select" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; margin-bottom: 16px;">
+          <option value="">Select HC/LO...</option>
+          ${uniqueHCLOs.map(hcLo => `<option value="${hcLo}">${hcLo}</option>`).join('')}
+        </select>
+      </div>
+      
+      <div class="section" id="csv-feedback-list" style="display: none;">
+        <h4>Available Feedback</h4>
+        <div class="feedback-container" id="csv-feedback-container">
+          <!-- Feedback options will be populated here -->
         </div>
       </div>
     `;
@@ -1565,12 +1845,38 @@ class MinervaContentScript {
     
   }
 
+  setupAssignmentGraderWelcomeEvents() {
+    // CSV upload option
+    const csvUploadBtn = document.getElementById('upload-csv-rubric');
+    if (csvUploadBtn) {
+      csvUploadBtn.addEventListener('click', () => {
+        this.loadSidebarPage('assignment-grader-csv');
+      });
+    }
+
+    // Manual entry option
+    const manualBtn = document.getElementById('manual-rubric');
+    if (manualBtn) {
+      manualBtn.addEventListener('click', () => {
+        this.loadSidebarPage('assignment-grader-manual');
+      });
+    }
+  }
+
   setupAssignmentGraderEvents() {
     // Initialize feedback field counter
     this.feedbackFieldCount = 5;
     
     // Set up event listeners for existing fields
     this.setupFeedbackFieldListeners();
+
+    // Back to welcome button
+    const backBtn = document.getElementById('back-to-welcome');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => {
+        this.loadSidebarPage('assignment-grader');
+      });
+    }
 
     // Add more feedback fields button
     const addBtn = document.getElementById('add-feedback-field');
@@ -1585,6 +1891,65 @@ class MinervaContentScript {
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
         this.clearAssignmentForm();
+      });
+    }
+  }
+
+  setupAssignmentGraderCSVEvents() {
+    // Initialize CSV data storage
+    this.csvRubricData = [];
+
+    // Back to welcome button
+    const backBtn = document.getElementById('back-to-welcome');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => {
+        this.loadSidebarPage('assignment-grader');
+      });
+    }
+
+    // CSV file selection
+    const selectFileBtn = document.getElementById('select-csv-file');
+    const fileInput = document.getElementById('csv-file-input');
+    
+    if (selectFileBtn && fileInput) {
+      selectFileBtn.addEventListener('click', () => {
+        fileInput.click();
+      });
+
+      fileInput.addEventListener('change', (e) => {
+        this.handleCSVFileUpload(e);
+      });
+    }
+
+    // Load CSV data button
+    const loadDataBtn = document.getElementById('load-csv-data');
+    if (loadDataBtn) {
+      loadDataBtn.addEventListener('click', () => {
+        this.loadCSVRubricData();
+      });
+    }
+
+    // HC/LO selection dropdown
+    const hcLoSelect = document.getElementById('csv-hc-lo-select');
+    if (hcLoSelect) {
+      hcLoSelect.addEventListener('change', (e) => {
+        this.showSelectedFeedback(e.target.value);
+      });
+    }
+
+    // Insert selected feedback button
+    const insertBtn = document.getElementById('insert-csv-feedback');
+    if (insertBtn) {
+      insertBtn.addEventListener('click', () => {
+        this.insertSelectedCSVFeedback();
+      });
+    }
+
+    // Clear CSV form button
+    const clearBtn = document.getElementById('clear-csv-form');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        this.clearCSVForm();
       });
     }
   }
@@ -1615,7 +1980,21 @@ class MinervaContentScript {
       }
     });
 
-    // Learning outcome change listener for button states
+    // Feedback textarea change listeners for button state
+    const feedbackTextareas = document.querySelectorAll('[id^="feedback-"]');
+    feedbackTextareas.forEach(textarea => {
+      if (textarea && !textarea.hasAttribute('data-listener-added')) {
+        textarea.addEventListener('input', (e) => {
+          this.updateFeedbackButtonState(e.target);
+        });
+        textarea.addEventListener('change', (e) => {
+          this.updateFeedbackButtonState(e.target);
+        });
+        textarea.setAttribute('data-listener-added', 'true');
+      }
+    });
+
+    // Learning outcome change listener for button states (optional field)
     const learningOutcomeInput = document.getElementById('learning-outcome');
     if (learningOutcomeInput && !learningOutcomeInput.hasAttribute('data-listener-added')) {
       learningOutcomeInput.addEventListener('input', () => {
@@ -1677,11 +2056,29 @@ class MinervaContentScript {
     const submitBtn = document.querySelector(`.submit-individual-feedback[data-feedback-id="${feedbackId}"]`);
     
     if (submitBtn) {
-      const hasOutcome = document.getElementById('learning-outcome')?.value.trim() || false;
-      const hasScore = scoreInput.value.trim() || false;
+      const feedbackTextarea = document.getElementById(`feedback-${feedbackId}`);
+      const hasFeedback = feedbackTextarea?.value.trim() || false;
       
-      // Enable button only if both outcome and score are filled
-      if (hasOutcome && hasScore) {
+      // Enable button if feedback has content (both outcome and score are now optional)
+      if (hasFeedback) {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('disabled');
+      } else {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('disabled');
+      }
+    }
+  }
+
+  updateFeedbackButtonState(feedbackTextarea) {
+    const feedbackId = feedbackTextarea.id.replace('feedback-', '');
+    const submitBtn = document.querySelector(`.submit-individual-feedback[data-feedback-id="${feedbackId}"]`);
+    
+    if (submitBtn) {
+      const hasFeedback = feedbackTextarea.value.trim() || false;
+      
+      // Enable button if feedback has content (outcome and score are optional)
+      if (hasFeedback) {
         submitBtn.disabled = false;
         submitBtn.classList.remove('disabled');
       } else {
@@ -1692,17 +2089,15 @@ class MinervaContentScript {
   }
 
   updateAllSubmitButtonStates() {
-    const hasOutcome = document.getElementById('learning-outcome')?.value.trim() || false;
-    
-    // Update all submit buttons based on outcome and their respective scores
+    // Update all submit buttons based only on feedback content
     const submitBtns = document.querySelectorAll('.submit-individual-feedback');
     submitBtns.forEach(btn => {
       const feedbackId = btn.getAttribute('data-feedback-id');
-      const scoreInput = document.getElementById(`score-${feedbackId}`);
-      const hasScore = scoreInput?.value.trim() || false;
+      const feedbackTextarea = document.getElementById(`feedback-${feedbackId}`);
+      const hasFeedback = feedbackTextarea?.value.trim() || false;
       
-      // Enable button only if both outcome and score are filled
-      if (hasOutcome && hasScore) {
+      // Enable button if feedback has content (outcome and score are now optional)
+      if (hasFeedback) {
         btn.disabled = false;
         btn.classList.remove('disabled');
       } else {
@@ -1733,25 +2128,23 @@ class MinervaContentScript {
         }
       });
 
-      if (!learningOutcome.trim() && feedbackData.length === 0) {
-        alert('Please enter a learning outcome or at least one feedback item.');
+      if (feedbackData.length === 0) {
+        alert('Please enter at least one feedback item.');
         return;
       }
 
-      // Find the add comment button on the page
-      const addCommentBtn = document.querySelector('button.button-classroom-primary.add-comment');
-      if (!addCommentBtn) {
-        alert('Could not find the add comment button on the page. Make sure you are on the assignment grader page.');
+      // Check if comment interface is already open
+      const commentTextarea = document.querySelector('textarea[placeholder*="Use"]') || 
+                             document.querySelector('textarea#comment');
+      const outcomeSelect = document.querySelector('select#select-outcome');
+      
+      if (!commentTextarea || !outcomeSelect) {
+        alert('Please open the comment interface first by clicking "Add a General Comment" on the page, then try again.');
         return;
       }
 
-      // Click the add comment button to open the comment interface
-      addCommentBtn.click();
-
-      // Wait a moment for the interface to load, then populate fields
-      setTimeout(() => {
-        this.populateAssignmentFields(learningOutcome, feedbackData);
-      }, 500);
+      // Directly populate the already-open interface
+      this.populateAssignmentFields(learningOutcome, feedbackData);
 
     } catch (error) {
       console.error('Error submitting assignment feedback:', error);
@@ -1768,28 +2161,26 @@ class MinervaContentScript {
       const feedback = document.getElementById(`feedback-${feedbackId}`)?.value || '';
       const score = document.getElementById(`score-${feedbackId}`)?.value || '';
 
-      if (!feedback && !score.trim()) {
-        alert(`Please enter feedback text or score for Feedback ${feedbackId}.`);
+      if (!feedback.trim()) {
+        alert(`Please enter feedback text for Feedback ${feedbackId}.`);
         return;
       }
 
       // Create feedback data array with just this item (preserve line breaks in feedback)
       const feedbackData = [{ feedback: feedback, score: score.trim() }];
 
-      // Find the add comment button on the page
-      const addCommentBtn = document.querySelector('button.button-classroom-primary.add-comment');
-      if (!addCommentBtn) {
-        alert('Could not find the add comment button on the page. Make sure you are on the assignment grader page.');
+      // Check if comment interface is already open
+      const commentTextarea = document.querySelector('textarea[placeholder*="Use"]') || 
+                             document.querySelector('textarea#comment');
+      const outcomeSelect = document.querySelector('select#select-outcome');
+      
+      if (!commentTextarea || !outcomeSelect) {
+        alert('Please open the comment interface first by clicking "Add a General Comment" on the page, then try again.');
         return;
       }
 
-      // Click the add comment button to open the comment interface
-      addCommentBtn.click();
-
-      // Wait a moment for the interface to load, then populate fields
-      setTimeout(() => {
-        this.populateAssignmentFields(learningOutcome, feedbackData);
-      }, 500);
+      // Directly populate the already-open interface
+      this.populateAssignmentFields(learningOutcome, feedbackData);
 
     } catch (error) {
       console.error('Error submitting individual feedback:', error);
@@ -1799,10 +2190,8 @@ class MinervaContentScript {
 
   populateAssignmentFields(learningOutcome, feedbackData) {
     try {
-      // Minimal wait for modal to load, then do everything immediately
-      setTimeout(() => {
-        this.doPopulateFieldsFast(learningOutcome, feedbackData);
-      }, 100);
+      // Since modal is already open, populate immediately
+      this.doPopulateFieldsFast(learningOutcome, feedbackData);
       
     } catch (error) {
       console.error('Error populating assignment fields:', error);
@@ -1815,12 +2204,22 @@ class MinervaContentScript {
       // Step 1: Populate comment immediately (independent of outcome)
       this.populateComment(feedbackData);
       
-      // Step 2: Populate outcome and wait for grade field
-      if (learningOutcome) {
+      // Step 2: Populate outcome and wait for grade field (if outcome provided)
+      if (learningOutcome && learningOutcome.trim()) {
         const outcomePopulated = await this.populateOutcomeFast(learningOutcome);
         if (outcomePopulated) {
           // Step 3: Wait for grade field to appear with polling
           await this.waitForGradeField(feedbackData);
+        }
+      } else {
+        console.log('No learning outcome provided - submitting general comment');
+        // Still try to set grade if provided, even without outcome
+        const firstScore = feedbackData.find(item => item.score && item.score.trim());
+        if (firstScore && firstScore.score) {
+          // Try to set grade without outcome (may not work in all cases)
+          setTimeout(() => {
+            this.simulateScoreKeypress(document.querySelector('textarea'), firstScore.score);
+          }, 500);
         }
       }
       
@@ -2029,12 +2428,14 @@ class MinervaContentScript {
         populated = true;
       }
 
-      // Try to populate grade field (should be visible after outcome selection)
-      const firstScore = feedbackData.find(item => item.score);
+      // Try to populate grade field only if score is provided
+      const firstScore = feedbackData.find(item => item.score && item.score.trim());
       if (firstScore && firstScore.score) {
         setTimeout(() => {
           this.populateGradeField(firstScore.score);
         }, 500);
+      } else {
+        console.log('No score provided - submitting comment only');
       }
       
     } catch (error) {
@@ -2237,8 +2638,9 @@ class MinervaContentScript {
 
   async waitForGradeField(feedbackData) {
     try {
-      const firstScore = feedbackData.find(item => item.score);
+      const firstScore = feedbackData.find(item => item.score && item.score.trim());
       if (!firstScore || !firstScore.score) {
+        console.log('No score to set - skipping grade field population');
         return;
       }
       
@@ -2320,6 +2722,336 @@ class MinervaContentScript {
     } catch (error) {
       console.error('Error in populateGradeFieldFast:', error);
     }
+  }
+
+  handleCSVFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      alert('Please select a CSV file.');
+      return;
+    }
+
+    const fileInfo = document.getElementById('csv-file-info');
+    if (fileInfo) {
+      fileInfo.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        this.parseCSVContent(e.target.result, file.name);
+      } catch (error) {
+        alert('Error reading CSV file: ' + error.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  parseCSVContent(csvContent, fileName) {
+    try {
+      // Use proper CSV parsing that handles line breaks within quoted fields
+      const parsedData = this.parseCSVWithLineBreaks(csvContent);
+      
+      if (parsedData.length < 2) {
+        throw new Error('CSV file must have at least a header row and one data row');
+      }
+
+      // Parse header
+      const headers = parsedData[0].map(h => h.trim());
+      const hcLoIndex = headers.findIndex(h => h.toLowerCase().includes('hc') || h.toLowerCase().includes('lo') || h.toLowerCase().includes('outcome'));
+      const commentIndex = headers.findIndex(h => h.toLowerCase().includes('comment') || h.toLowerCase().includes('feedback'));
+      const gradeIndex = headers.findIndex(h => h.toLowerCase().includes('grade') || h.toLowerCase().includes('score'));
+
+      if (hcLoIndex === -1 || commentIndex === -1) {
+        throw new Error('CSV must contain columns for HC/LO and Comment');
+      }
+
+      // Parse data rows
+      const rubricData = [];
+      for (let i = 1; i < parsedData.length; i++) {
+        const values = parsedData[i];
+        if (values.length > Math.max(hcLoIndex, commentIndex)) {
+          const item = {
+            hcLo: values[hcLoIndex]?.trim() || '',
+            comment: values[commentIndex]?.trim() || '',
+            grade: gradeIndex !== -1 ? (values[gradeIndex]?.trim() || '') : ''
+          };
+          
+          if (item.hcLo && item.comment) {
+            rubricData.push(item);
+          }
+        }
+      }
+
+      if (rubricData.length === 0) {
+        throw new Error('No valid rubric data found in CSV');
+      }
+
+      this.csvRubricData = rubricData;
+      this.showCSVPreview(rubricData, fileName);
+
+    } catch (error) {
+      alert('Error parsing CSV: ' + error.message);
+    }
+  }
+
+  parseCSVWithLineBreaks(csvContent) {
+    const result = [];
+    let current = [];
+    let currentField = '';
+    let inQuotes = false;
+    let i = 0;
+    
+    while (i < csvContent.length) {
+      const char = csvContent[i];
+      const nextChar = csvContent[i + 1];
+      
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          // Escaped quote within quoted field
+          currentField += '"';
+          i++; // Skip next quote
+        } else {
+          // Start or end of quoted field
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        // Field separator
+        current.push(currentField);
+        currentField = '';
+      } else if ((char === '\n' || char === '\r') && !inQuotes) {
+        // End of row (only if not inside quotes)
+        current.push(currentField);
+        if (current.length > 0) {
+          result.push(current);
+        }
+        current = [];
+        currentField = '';
+        
+        // Skip \r\n combinations
+        if (char === '\r' && nextChar === '\n') {
+          i++;
+        }
+      } else {
+        // Regular character (including line breaks within quotes)
+        currentField += char;
+      }
+      
+      i++;
+    }
+    
+    // Handle last field and row
+    if (currentField || current.length > 0) {
+      current.push(currentField);
+      result.push(current);
+    }
+    
+    return result.filter(row => row.length > 0 && row.some(field => field.trim()));
+  }
+
+  showCSVPreview(data, fileName) {
+    const previewDiv = document.getElementById('csv-preview');
+    const previewContent = document.getElementById('csv-preview-content');
+    
+    if (previewDiv && previewContent) {
+      let previewHtml = `
+        <p><strong>File:</strong> ${fileName}</p>
+        <p><strong>Entries:</strong> ${data.length}</p>
+        <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 8px; background: #f9f9f9;">
+      `;
+      
+      data.slice(0, 5).forEach((item, index) => {
+        // Preserve line breaks in HTML display
+        const commentDisplay = item.comment.length > 150 ? 
+          item.comment.substring(0, 150) + '...' : 
+          item.comment;
+        const commentWithBreaks = commentDisplay.replace(/\n/g, '<br>');
+        
+        previewHtml += `
+          <div style="margin-bottom: 8px; padding: 8px; background: white; border-radius: 4px;">
+            <strong>HC/LO:</strong> ${item.hcLo}<br>
+            <strong>Comment:</strong> ${commentWithBreaks}<br>
+            ${(item.grade && item.grade.trim() && !isNaN(parseInt(item.grade))) ? `<strong>Grade:</strong> ${item.grade}<br>` : ''}
+          </div>
+        `;
+      });
+      
+      if (data.length > 5) {
+        previewHtml += `<p style="text-align: center; color: #666;">... and ${data.length - 5} more entries</p>`;
+      }
+      
+      previewHtml += '</div>';
+      previewContent.innerHTML = previewHtml;
+      previewDiv.style.display = 'block';
+    }
+  }
+
+  loadCSVRubricData() {
+    if (!this.csvRubricData || this.csvRubricData.length === 0) {
+      alert('No CSV data to load. Please upload a CSV file first.');
+      return;
+    }
+
+    // Group data by HC/LO
+    this.groupedRubricData = this.groupCSVDataByHCLO(this.csvRubricData);
+    
+    // Clean the sidebar and show only the rubric interface
+    this.loadSidebarPage('assignment-grader-csv-loaded');
+    
+    console.log(`✅ Loaded ${this.csvRubricData.length} rubric entries grouped into ${Object.keys(this.groupedRubricData).length} HC/LOs`);
+  }
+
+  groupCSVDataByHCLO(data) {
+    const grouped = {};
+    
+    data.forEach(item => {
+      const hcLo = item.hcLo.trim();
+      if (!grouped[hcLo]) {
+        grouped[hcLo] = [];
+      }
+      grouped[hcLo].push(item);
+    });
+    
+    return grouped;
+  }
+
+  setupAssignmentGraderCSVLoadedEvents() {
+    // Back to welcome button
+    const backBtn = document.getElementById('back-to-welcome');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => {
+        this.loadSidebarPage('assignment-grader');
+      });
+    }
+
+    // HC/LO selection dropdown
+    const hcLoSelect = document.getElementById('csv-hc-lo-select');
+    if (hcLoSelect) {
+      hcLoSelect.addEventListener('change', (e) => {
+        this.showCSVFeedbackOptions(e.target.value);
+      });
+    }
+  }
+
+  showCSVFeedbackOptions(selectedHCLO) {
+    const feedbackSection = document.getElementById('csv-feedback-list');
+    const feedbackContainer = document.getElementById('csv-feedback-container');
+    
+    if (!selectedHCLO || !this.groupedRubricData[selectedHCLO]) {
+      feedbackSection.style.display = 'none';
+      return;
+    }
+
+    const feedbackOptions = this.groupedRubricData[selectedHCLO];
+    
+    // Generate feedback options with same styling as manual approach
+    let feedbackHtml = '';
+    feedbackOptions.forEach((item, index) => {
+      const uniqueId = `csv-${selectedHCLO.replace(/[^a-zA-Z0-9]/g, '')}-${index}`;
+      // Preserve line breaks in display by converting to HTML
+      const commentWithBreaks = item.comment.replace(/\n/g, '<br>');
+      
+      // Apply score-based color class if grade exists and is valid
+      let scoreClass = '';
+      const gradeValue = item.grade ? parseInt(item.grade) : null;
+      if (gradeValue !== null && !isNaN(gradeValue) && gradeValue >= 0 && gradeValue <= 5) {
+        scoreClass = `score-${gradeValue}`;
+      }
+      
+      feedbackHtml += `
+        <div class="feedback-field ${scoreClass}">
+          <div class="feedback-header">
+            <label class="feedback-title">Option ${index + 1}</label>
+            ${(item.grade && item.grade.trim() && !isNaN(parseInt(item.grade))) ? `<div class="score-display">${item.grade}</div>` : ''}
+            <button class="btn btn-small submit-individual-feedback csv-insert-btn" data-csv-hclo="${selectedHCLO}" data-csv-index="${index}">Insert</button>
+          </div>
+          <div class="feedback-text-display">${commentWithBreaks}</div>
+        </div>
+      `;
+    });
+    
+    feedbackContainer.innerHTML = feedbackHtml;
+    feedbackSection.style.display = 'block';
+    
+    // Set up event listeners for insert buttons
+    this.setupCSVInsertButtons();
+  }
+
+  setupCSVInsertButtons() {
+    const insertBtns = document.querySelectorAll('.csv-insert-btn');
+    insertBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const hcLo = e.target.getAttribute('data-csv-hclo');
+        const index = parseInt(e.target.getAttribute('data-csv-index'));
+        this.insertCSVFeedbackItem(hcLo, index);
+      });
+    });
+  }
+
+  insertCSVFeedbackItem(hcLo, index) {
+    if (!this.groupedRubricData[hcLo] || !this.groupedRubricData[hcLo][index]) {
+      alert('Invalid feedback selection.');
+      return;
+    }
+
+    const selectedItem = this.groupedRubricData[hcLo][index];
+    
+    // Check if comment interface is already open
+    const commentTextarea = document.querySelector('textarea[placeholder*="Use"]') || 
+                           document.querySelector('textarea#comment');
+    const outcomeSelect = document.querySelector('select#select-outcome');
+    
+    if (!commentTextarea || !outcomeSelect) {
+      alert('Please open the comment interface first by clicking "Add a General Comment" on the page, then try again.');
+      return;
+    }
+
+    // Create feedback data and populate
+    const feedbackData = [{ 
+      feedback: selectedItem.comment, 
+      score: selectedItem.grade 
+    }];
+    
+    this.populateAssignmentFields(selectedItem.hcLo, feedbackData);
+  }
+
+  insertSelectedCSVFeedback() {
+    const selectedIndex = document.getElementById('csv-hc-lo-select')?.value;
+    if (!selectedIndex || !this.csvRubricData[selectedIndex]) {
+      alert('Please select an HC/LO from the dropdown first.');
+      return;
+    }
+
+    const selectedItem = this.csvRubricData[selectedIndex];
+    
+    // Check if comment interface is already open
+    const commentTextarea = document.querySelector('textarea[placeholder*="Use"]') || 
+                           document.querySelector('textarea#comment');
+    const outcomeSelect = document.querySelector('select#select-outcome');
+    
+    if (!commentTextarea || !outcomeSelect) {
+      alert('Please open the comment interface first by clicking "Add a General Comment" on the page, then try again.');
+      return;
+    }
+
+    // Create feedback data and populate
+    const feedbackData = [{ 
+      feedback: selectedItem.comment, 
+      score: selectedItem.grade 
+    }];
+    
+    this.populateAssignmentFields(selectedItem.hcLo, feedbackData);
+  }
+
+  clearCSVForm() {
+    const hcLoSelect = document.getElementById('csv-hc-lo-select');
+    if (hcLoSelect) {
+      hcLoSelect.value = '';
+    }
+    
+    document.getElementById('selected-feedback-display').style.display = 'none';
   }
 
   clearAssignmentForm() {
